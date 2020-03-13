@@ -1,0 +1,24 @@
+{application, erlim,
+ [{description, "An OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {erlim_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    cowboy,
+    log4erl,
+    jsone
+   ]},
+  {env, [
+   {http_port, 8090},
+   {db_host, "127.0.0.1"},
+   {db_user, "fjp"},
+   {db_pwd, "fjp123456"},
+   {db_name, "erlim"}
+  ]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
