@@ -127,6 +127,7 @@ weite_file()->
         get(?TABLE_ATOM_LIST)
     ),
 
+
     lists:foreach(
         fun(TableAtom)->
             FieldList = [Field||#r_field{field = Field}<-get({?TABLE_FIELD_ATOM_LIST,TableAtom})],
