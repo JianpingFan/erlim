@@ -61,7 +61,7 @@ init([]) ->
     {ok,_Pid}->
       prepare(),
       log4erl:info("start ~w success",[?MODULE]),
-      erlang:send_after(5000,self(),table_info_to_file),
+%%      erlang:send_after(5000,self(),table_info_to_file),
       {ok, #db_state{}};
     _->
       {stop, conn_db_fail}
@@ -104,7 +104,6 @@ handle_cast(_Request, State = #db_state{}) ->
   {noreply, NewState :: #db_state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #db_state{}}).
 handle_info(table_info_to_file, State = #db_state{})->
-  erlang:send_after(5000,self(),table_info_to_file),
   db_analysis_table:analysis_table(),
   {noreply, State};
 handle_info({write_db,TableAtom,Key,RowData}, State = #db_state{})->
