@@ -1,6 +1,11 @@
-{"1.1.0",
-[{<<"cowboy">>,{pkg,<<"cowboy">>,<<"2.7.0">>},0},
- {<<"cowlib">>,{pkg,<<"cowlib">>,<<"2.8.0">>},1},
+[{<<"cowboy">>,
+  {git,"git://github.com/ninenines/cowboy.git",
+       {ref,"63b17e4edf666d995ec86cdcda17a62ba5ebc423"}},
+  0},
+ {<<"cowlib">>,
+  {git,"https://github.com/ninenines/cowlib",
+       {ref,"c6553f8308a2ca5dcd69d845f0a7d098c40c3363"}},
+  1},
  {<<"jsone">>,
   {git,"https://github.com/sile/jsone.git",
        {ref,"2ebbe2361d19af3cc4c94b7345972710aec4fbda"}},
@@ -17,10 +22,7 @@
   {git,"https://github.com/dizzyd/erlang-mysql-driver.git",
        {ref,"051f22e1cbe130061b43273a14217c659e6b860d"}},
   0},
- {<<"ranch">>,{pkg,<<"ranch">>,<<"1.7.1">>},1}]}.
-[
-{pkg_hash,[
- {<<"cowboy">>, <<"91ED100138A764355F43316B1D23D7FF6BDB0DE4EA618CB5D8677C93A7A2F115">>},
- {<<"cowlib">>, <<"FD0FF1787DB84AC415B8211573E9A30A3EBE71B5CBFF7F720089972B2319C8A4">>},
- {<<"ranch">>, <<"6B1FAB51B49196860B733A49C07604465A47BDB78AA10C1C16A3D199F7F8C881">>}]}
-].
+ {<<"ranch">>,
+  {git,"https://github.com/ninenines/ranch",
+       {ref,"3190aef88aea04d6dce8545fe9b4574288903f44"}},
+  1}].

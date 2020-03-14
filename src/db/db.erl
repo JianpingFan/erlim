@@ -208,9 +208,8 @@ table_delete_atom(Tab)->
 
 prepare()->
   lists:foreach(
-    fun({Tab,_,InsertSql,DeleteSql})->
-      mysql:prepare(table_insert_atom(Tab), InsertSql),
-      mysql:prepare(table_delete_atom(Tab), DeleteSql)
+    fun({PrepareAtom,PrepareSql})->
+      mysql:prepare(PrepareAtom, PrepareSql)
     end,
     ?PREPARE_SQL_LIST
   ).
