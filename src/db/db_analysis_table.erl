@@ -23,14 +23,6 @@
 -export([analysis_table/0]).
 
 analysis_table()->
-%%    case mysql:start_link(erlim, "127.0.0.1", "fjp", "fjp123456", "erlim") of
-%%        {ok,_Pid}->
-%%                ok;
-%%        {error,{already_started,_}}->
-%%            {stop, conn_db_fail};
-%%        _->
-%%            throw({error,conn_db_fail})
-%%    end,
     io:format("analysis_table"),
     TableList = db:fetch("show tables"),
     put(?TABLE_ATOM_LIST,[list_to_atom(binary_to_list(TableBin))||[TableBin]<-TableList]),
@@ -58,6 +50,20 @@ desc_table(TableAtom)->
 
 weite_file()->
     {ok, S} = file:open("include/def_table.hrl", write),
+    io:format(S,"-define(TABLE_LIST, [",[]),
+    lists:foldl(
+        fun(TableAtom,Index)->
+            case length(get(?TABLE_ATOM_LIST)) of
+                Index->io:format(S,"~s",[string:to_lower(atom_to_list(TableAtom))]);
+                _->io:format(S,"~s, ",[string:to_lower(atom_to_list(TableAtom))])
+            end,
+            Index + 1
+        end,
+        1,
+        get(?TABLE_ATOM_LIST)
+    ),
+    io:format(S,"]).~n",[]),
+
     lists:foreach(
         fun(TableAtom)->
             io:format(S,"-define(table_~s,table_~s).~n",[string:to_lower(atom_to_list(TableAtom)),string:to_lower(atom_to_list(TableAtom))]),

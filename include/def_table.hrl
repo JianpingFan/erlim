@@ -1,3 +1,4 @@
+-define(TABLE_LIST, [users]).
 -define(table_users,table_users).
 -record(field_users,{user_id,mobile,pwd,nickname,create_time}).
 

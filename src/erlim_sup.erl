@@ -39,6 +39,8 @@ init([]) ->
             permanent, 2000, worker, []},
         {db, {db, start_link, []},
             permanent, 2000, worker, []},
+        {cache, {cache, start_link, []},
+            permanent, 2000, worker, []},
         {login, {login, start_link, []},
             permanent, 2000, worker, []},
         {chat_single, {chat_single, start_link, []},

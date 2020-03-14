@@ -41,8 +41,6 @@
 -spec(start_link() ->
     {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link() ->
-    erlang:send_after(2000,self(),get_cache),
-    erlang:send_after(?TICK_WRITE_TO_DB_INTERVAL,self(),write_to_db),
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
@@ -55,6 +53,9 @@ start_link() ->
     {ok, State :: #cache_state{}} | {ok, State :: #cache_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    erlang:send_after(2000,self(),get_cache),
+    erlang:send_after(?TICK_WRITE_TO_DB_INTERVAL,self(),write_to_db),
+    log4erl:info("start ~w success",[?MODULE]),
     {ok, #cache_state{}}.
 
 %% @private
@@ -107,10 +108,10 @@ handle_info(write_to_db, State = #cache_state{})->
     erlang:send_after(?TICK_WRITE_TO_DB_INTERVAL,self(),write_to_db),
     {noreply, State};
 handle_info(get_cache, State = #cache_state{})->
-    erlang:send(db,{get_cache,?PREPARE_SQL_LIST}),
+    erlang:send(db,{get_cache,?TABLE_LIST}),
     {noreply, State};
-handle_info({callback_cache,TableAtom,Cache}, State)->
-    put_table_data(TableAtom,Cache),
+handle_info({callback_cache,TableAtom,RowDataList}, State)->
+    put_table_data(TableAtom,RowDataList),
     {noreply, State};
 handle_info(_Info, State = #cache_state{}) ->
     {noreply, State}.
@@ -181,11 +182,14 @@ get_table_data(TableAtom)->
         Data->Data
     end.
 
-put_table_data(TableAtom,DataList)->
-    put_table_data(TableAtom,DataList,get_table_data(TableAtom)).
+%%-record(field_users,{user_id,mobile,pwd,nickname,create_time}).
+put_table_data(TableAtom,RowDataList)->
+    log4erl:info("put_table_data RowDataList = ~w",[RowDataList]),
+    put_table_data(TableAtom,RowDataList,get_table_data(TableAtom)).
 
-put_table_data(TableAtom,[Data|DataList],OldDataList)->
-    {Key,Data1} = Data,
-    put_table_data(TableAtom,DataList,[#table_data{data = Data1,key = Key}|OldDataList]);
+put_table_data(TableAtom,[RowData|RowDataList],OldDataList)->
+    Tuple = list_to_tuple([list_to_atom(lists:concat(["field_",atom_to_list(TableAtom)]))|RowData]),
+    log4erl:info("put_table_data Tuple = ~w",[Tuple]),
+    put_table_data(TableAtom,RowDataList,[Tuple|OldDataList]);
 put_table_data(TableAtom,[],OldDataList)->
     put({?DATA_KEY,TableAtom},OldDataList).

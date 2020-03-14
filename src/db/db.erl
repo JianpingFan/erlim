@@ -61,7 +61,6 @@ init([]) ->
     {ok,_Pid}->
       prepare(),
       log4erl:info("start ~w success",[?MODULE]),
-%%      erlang:send_after(5000,self(),table_info_to_file),
       {ok, #db_state{}};
     _->
       {stop, conn_db_fail}
@@ -107,10 +106,10 @@ handle_info(table_info_to_file, State = #db_state{})->
   db_analysis_table:analysis_table(),
   {noreply, State};
 handle_info({write_db,TableAtom,Key,RowData}, State = #db_state{})->
-  DeleteAtom = table_delete_atom(TableAtom),
-  InsertAtom = table_insert_atom(TableAtom),
-  exec(DeleteAtom,lists:sort(Key)),
-  exec(InsertAtom,RowData),
+%%  DeleteAtom = table_delete_atom(TableAtom),
+%%  InsertAtom = table_insert_atom(TableAtom),
+%%  exec(DeleteAtom,lists:sort(Key)),
+%%  exec(InsertAtom,RowData),
   {noreply, State};
 handle_info({get_cache,TaskList}, State = #db_state{})->
   get_cache(TaskList),
@@ -144,44 +143,30 @@ code_change(_OldVsn, State = #db_state{}, _Extra) ->
 %%%===================================================================
 
 get_cache([Tab|TabList])->
-  {Table,KeyList,_,_} = Tab,
-  get_cache1(Table,lists:sort(KeyList),1,10),
+  get_cache1(Tab,0,10),
   get_cache(TabList);
 get_cache([])->
   ok.
 
 
-get_key_list_data(List,[Key|Left],Acc)->
-  Data = lists:nth(Key,List),
-  get_key_list_data(List,Left,[Data|Acc]);
-get_key_list_data(_List,[],Acc)-> lists:reverse(Acc).
-
-
-
-get_cache1(Table,KeyList,Index,Step)->
-  Sql = lists:concat(["select * from ",Table," limit ",Index," , ",Step]),
+get_cache1(Table,Index,Step)->
+  Sql = lists:concat(["select * from ",atom_to_list(Table)," limit ",Index," , ",Step]),
   DataList = fetch(list_to_binary(Sql)),
-  DataList1 =
-  lists:map(
-    fun(List)->
-      {get_key_list_data(List,KeyList,[]),List}
-    end,
-    DataList
-  ),
-  Len = length(DataList1),
+  Len = length(DataList),
   case Len < Step of
     true->
-      erlang:send(cache,{callback_cache,list_to_atom(Table),DataList1}),
+      erlang:send(cache,{callback_cache,Table,DataList}),
       ok;
     _->
-      erlang:send(cache,{callback_cache,list_to_atom(Table),DataList1}),
-      get_cache1(Table,KeyList,Index + Step,Step)
+      erlang:send(cache,{callback_cache,Table,DataList}),
+      get_cache1(Table,Index + Step,Step)
   end.
 
 
 fetch(Sql)->
   case mysql:fetch(erlim, Sql) of
     {data, Result}->
+      log4erl:info("fetch Result = ~w",[Result]),
       mysql:get_result_rows(Result);
     ERR->
       log4erl:info("fetch ERR = ~w",[ERR]),
@@ -197,13 +182,13 @@ exec(Atom,ArgList)->
       false
   end.
 
-table_insert_atom(Tab)->
-  InsertStr = lists:concat([atom_to_list(Tab),"_insert"]),
-  list_to_atom(InsertStr).
-
-table_delete_atom(Tab)->
-  InsertStr = lists:concat([atom_to_list(Tab),"_dalete"]),
-  list_to_atom(InsertStr).
+%%table_insert_atom(Tab)->
+%%  InsertStr = lists:concat([atom_to_list(Tab),"_insert"]),
+%%  list_to_atom(InsertStr).
+%%
+%%table_delete_atom(Tab)->
+%%  InsertStr = lists:concat([atom_to_list(Tab),"_dalete"]),
+%%  list_to_atom(InsertStr).
 
 prepare()->
   lists:foreach(
