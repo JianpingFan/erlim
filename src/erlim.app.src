@@ -13,8 +13,8 @@
   {env, [
    {http_port, 8090},
    {db_host, "127.0.0.1"},
-   {db_user, "root"},
-   {db_pwd, "test"},
+   {db_user, "fjp"},
+   {db_pwd, "fjp123456"},
    {db_name, "erlim"}
   ]},
   {modules, []},

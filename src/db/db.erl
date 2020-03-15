@@ -106,10 +106,10 @@ handle_info(table_info_to_file, State = #db_state{})->
   db_analysis_table:analysis_table(),
   {noreply, State};
 handle_info({write_db,TableAtom,Key,RowData}, State = #db_state{})->
-%%  DeleteAtom = table_delete_atom(TableAtom),
-%%  InsertAtom = table_insert_atom(TableAtom),
-%%  exec(DeleteAtom,lists:sort(Key)),
-%%  exec(InsertAtom,RowData),
+  delete_data_by_primary_key(TableAtom,Key),
+  List = tuple_to_list(RowData),
+  [_,_|InsetData] = List,
+  delete_data_by_primary_key(TableAtom,InsetData),
   {noreply, State};
 handle_info({get_cache,TaskList}, State = #db_state{})->
   get_cache(TaskList),
@@ -182,14 +182,6 @@ exec(Atom,ArgList)->
       false
   end.
 
-%%table_insert_atom(Tab)->
-%%  InsertStr = lists:concat([atom_to_list(Tab),"_insert"]),
-%%  list_to_atom(InsertStr).
-%%
-%%table_delete_atom(Tab)->
-%%  InsertStr = lists:concat([atom_to_list(Tab),"_dalete"]),
-%%  list_to_atom(InsertStr).
-
 prepare()->
   lists:foreach(
     fun({PrepareAtom,PrepareSql})->
@@ -198,4 +190,19 @@ prepare()->
     ?PREPARE_SQL_LIST
   ).
 
+table_string_name(TableAtom) when is_atom(TableAtom)->
+  S = atom_to_list(TableAtom),
+  lists:sublist(S,7,length(S)).
+table_atom_name(TableAtom) when is_atom(TableAtom)->
+  list_to_atom(table_string_name(TableAtom)).
+
+%%根据主键删除数据
+delete_data_by_primary_key(TableAtom,ArgList)->
+  PreAtom = list_to_atom(lists:concat(["sql_delete_",table_string_name(TableAtom),"_by_pri_key"])),
+  exec(PreAtom,ArgList).
+
+%%插入数据
+insert_data_to_table(TableAtom,ArgList)->
+  PreAtom = list_to_atom(lists:concat(["sql_insert_",table_string_name(TableAtom)])),
+  exec(PreAtom,ArgList).
 

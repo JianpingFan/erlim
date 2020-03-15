@@ -24,13 +24,12 @@ init(Req0, Opts) ->
     Req3 = cowboy_req:set_resp_header(<<"access-control-allow-headers">>, <<"content-type">>,Req2),
     Method = cowboy_req:method(Req3),
 %%    HasBody = cowboy_req:has_body(Req3),
+    Req =
     case cowboy_req:binding(action,Req3) of
         ?undefined->maybe_echo(Method, ?undefined, Req3);
         ActionBin->
             maybe_echo(Method, binary_to_list(ActionBin), Req3)
     end,
-    Action = cowboy_req:binding(action,Req3),
-    Req = maybe_echo(Method, Action, Req3),
     {ok, Req, Opts}.
 
 
@@ -40,16 +39,16 @@ maybe_echo(Method, undefined, Req) when Method == <<"GET">> orelse Method == <<"
     echo(unicode:characters_to_binary("1"), Req);
 maybe_echo(<<"POST">>, "login", Req0) ->
     {ok, PostVals, Req} = cowboy_req:read_urlencoded_body(Req0),
-    Mobile = proplists:get_value(<<"mobile">>, PostVals),
-    Passwd = proplists:get_value(<<"passwd">>, PostVals),
-    Sql = io_lib:format("select * from users where mobile = '~s'", [Mobile]),
-    case gen_server:call(db, {select, list_to_binary(Sql)}) of
-        [[IDBin, MobileBin, PwdBin, _NickNameBin, _CreateTimeBin]] ->
-            case binary_to_integer(MobileBin) == binary_to_integer(Mobile) andalso binary_to_list(PwdBin) == binary_to_list(Passwd) of
-                true ->
+    MobileBin = proplists:get_value(<<"mobile">>, PostVals),
+    PasswdBin = proplists:get_value(<<"passwd">>, PostVals),
+%%    Sql = io_lib:format("select * from users where mobile = '~s'", [Mobile]),
+    case gen_server:call(cache, {get_data_by_field,?table_users,#field_users.mobile,MobileBin}) of
+        [#field_users{pwd = PwdBin,user_id = UserIDBin}]->
+            case PasswdBin == PwdBin of
+                true->
                     log4erl:info("login success"),
                     TokenID = generate_token_id(),
-                    UserID = binary_to_integer(IDBin),
+                    UserID = binary_to_integer(UserIDBin),
                     log4erl:info("UserID = ~w",[UserID]),
                     log4erl:info("token = ~w ",[TokenID]),
                     update_user_token(UserID,TokenID),
@@ -57,7 +56,7 @@ maybe_echo(<<"POST">>, "login", Req0) ->
                     ReturnList = [{"res","0"},{"user_id",integer_to_list(UserID)},{"token",integer_to_list(TokenID)}],
                     log4erl:info("ReturnList = ~w",[ReturnList]),
                     json_return(ReturnList,Req);
-                _ ->
+                _->
                     echo(unicode:characters_to_binary("login fail"), Req)
             end;
         _ ->
@@ -66,8 +65,8 @@ maybe_echo(<<"POST">>, "login", Req0) ->
 %%maybe_echo(<<"POST">>, false, Req) ->
 %%    cowboy_req:reply(400, [], <<"Missing body.">>, Req);
 maybe_echo(ReqWay, HasBody, Req) ->
-    log4erl:info("ReqWay = ~w",[ReqWay]),
-    log4erl:info("HasBody = ~w",[HasBody]),
+    log4erl:info("ReqWay = ~s",[binary_to_list(ReqWay)]),
+    log4erl:info("HasBody = ~s",[binary_to_list(HasBody)]),
     log4erl:info("Req = ~w",[Req]),
     %% Method not allowed.
     cowboy_req:reply(405, Req).

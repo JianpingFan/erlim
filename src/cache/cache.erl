@@ -68,6 +68,11 @@ init([]) ->
     {noreply, NewState :: #cache_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #cache_state{}} |
     {stop, Reason :: term(), NewState :: #cache_state{}}).
+%%{get_data_by_field,table_users,4,<<"17380630290">>},
+handle_call({get_data_by_field,TableAtom,Index,FieldData}, _From, State = #cache_state{}) ->
+    Data = get_data_by_field(TableAtom,Index,FieldData),
+    log4erl:info("get_data_by_field Data = ~w",[Data]),
+    {reply, Data, State};
 handle_call(_Request, _From, State = #cache_state{}) ->
     {reply, ok, State}.
 
@@ -92,11 +97,9 @@ handle_info(write_to_db, State = #cache_state{})->
         Data->
             lists:foreach(
                 fun({TableAtom,Key})->
-                    case get_data(TableAtom,Key) of
+                    case get_data_by_pri_key(TableAtom,Key) of
                         RowData when length(RowData) > 0 ->
-                            erlang:send(db,{write_db,TableAtom,Key,RowData}),
-                            NewAllData = lists:keystore(Key,#table_data.key,get_table_data(TableAtom),#table_data{data = RowData,key = Key}),
-                            put({?DATA_KEY,TableAtom},NewAllData);
+                            erlang:send(db,{write_db,TableAtom,Key,RowData});
                         Err->
                             log4erl:warn("write_to_db TableAtom ~w,Key = ~w,Err = ~w",[TableAtom,Key,Err]),
                             ok
@@ -137,30 +140,37 @@ code_change(_OldVsn, State = #cache_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-get_data(TableAtom,Key)->
-    AllData = get_table_data(TableAtom),
-    case lists:keyfind(Key,#table_data.key,AllData) of
-        #table_data{data = Data}->Data;
+%% IndexKey #field_users....
+get_data_by_pri_key(TableAtom,KeyData)->
+    AllData = get_table_data(db:table_atom_name(TableAtom)),
+    case lists:keyfind(KeyData,2,AllData) of
+        Data when is_tuple(Data)->Data;
         _->[]
     end.
 
-write_data(TableAtom,Data)->
-    case lists:keyfind(TableAtom,1,?PREPARE_SQL_LIST) of
+get_data_by_field(TableAtom,Index,FieldData)->
+    AllData = get_table_data(db:table_atom_name(TableAtom)),
+    get_data_by_field(Index,FieldData,AllData,[]).
+get_data_by_field(Index,FieldData,[RowData|AllData],Acc)->
+    case lists:nth(Index,tuple_to_list(RowData)) == FieldData of
+        true->get_data_by_field(Index,FieldData,AllData,[RowData|Acc]);
+        _->get_data_by_field(Index,FieldData,AllData,Acc)
+    end;
+get_data_by_field(_Index,_FieldData,[],Acc)->lists:reverse(Acc).
+
+
+write_data(TableAtom,DataTup)->
+    case lists:member(db:table_atom_name(TableAtom),?TABLE_LIST) of
         false->
             log4erl:error("write_data TableAtom = ~w not found",[TableAtom]),
             ok;
-        {_,KeyList,_,_}->
-            case db:get_key_list_data(Data,KeyList,[]) of
-                []->
-                    log4erl:error("write_data KeyList = ~w ,Data = ~w error",[KeyList,Data]),
-                    ok;
-                KeyData->
-                    AllData = get_table_data(TableAtom),
-                    NewAllData = lists:keystore(KeyData,#table_data.key,AllData,#table_data{data = Data,key = KeyData}),
-                    put_waite_to_db_key({TableAtom,KeyData}),
-                    put({?DATA_KEY,TableAtom},NewAllData)
-            end
+        true->
+            AllData = get_table_data(db:table_atom_name(TableAtom)),
+            List = tuple_to_list(DataTup),
+            [_,PrimaryKeyData|_] = List,
+            NewAllData = lists:keystore(PrimaryKeyData,2,AllData,DataTup),
+            put_waite_to_db_key({TableAtom,PrimaryKeyData}),
+            put({?DATA_KEY,TableAtom},NewAllData)
     end,
     ok.
 
@@ -182,14 +192,23 @@ get_table_data(TableAtom)->
         Data->Data
     end.
 
-%%-record(field_users,{user_id,mobile,pwd,nickname,create_time}).
 put_table_data(TableAtom,RowDataList)->
     log4erl:info("put_table_data RowDataList = ~w",[RowDataList]),
-    put_table_data(TableAtom,RowDataList,get_table_data(TableAtom)).
+    case lists:keyfind(TableAtom,#table_info.table_name,?TABLE_INFO_LIST) of
+        #table_info{primary_key = PrimaryKey}->
+            put_table_data(TableAtom,PrimaryKey,RowDataList,get_table_data(TableAtom));
+        _->
+            log4erl:error("put_table_data ~w not have primary_key = ~w",[TableAtom]),
+            ok
+    end.
 
-put_table_data(TableAtom,[RowData|RowDataList],OldDataList)->
-    Tuple = list_to_tuple([list_to_atom(lists:concat(["field_",atom_to_list(TableAtom)]))|RowData]),
+put_table_data(TableAtom,PrimaryKey,[RowData|RowDataList],OldDataList)->
+    Tuple = list_to_tuple([list_to_atom(lists:concat(["field_",atom_to_list(TableAtom)])),primary_key_data(PrimaryKey,RowData,[])|RowData]),
     log4erl:info("put_table_data Tuple = ~w",[Tuple]),
-    put_table_data(TableAtom,RowDataList,[Tuple|OldDataList]);
-put_table_data(TableAtom,[],OldDataList)->
+    put_table_data(TableAtom,PrimaryKey,RowDataList,[Tuple|OldDataList]);
+put_table_data(TableAtom,_PrimaryKey,[],OldDataList)->
     put({?DATA_KEY,TableAtom},OldDataList).
+
+primary_key_data([Index|PrimaryKey],RowData,Acc)->
+    primary_key_data(PrimaryKey,RowData,[lists:nth(Index,RowData)|Acc]);
+primary_key_data([],_RowData,Acc)->lists:reverse(Acc).
