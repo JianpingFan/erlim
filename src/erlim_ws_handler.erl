@@ -41,12 +41,6 @@ websocket_handle({text, <<"user_create1">>}, State) ->
 websocket_handle({text, <<"user_create2">>}, State) ->
   erlang:send(login,{user_create,<<"fjp2">>}),
   {[], State};
-websocket_handle({text, <<"user_login1">>}, State) ->
-  erlang:send(login,{user_login,self(),"fjp1"}),
-  {[], State};
-websocket_handle({text, <<"user_login2">>}, State) ->
-  erlang:send(login,{user_login,self(),"fjp2"}),
-  {[], State};
 websocket_handle({text, <<"8 ",Msg/binary>>}, State) ->
   erlang:send(chat_single,{text,self(),8,Msg}),
   {[], State};

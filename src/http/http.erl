@@ -26,23 +26,22 @@ init(Req0, Opts) ->
 %%    HasBody = cowboy_req:has_body(Req3),
     Req =
     case cowboy_req:binding(action,Req3) of
-        ?undefined->maybe_echo(Method, ?undefined, Req3);
+        ?undefined->maybe_echo(binary_to_list(Method), ?undefined, Req3);
         ActionBin->
-            maybe_echo(Method, binary_to_list(ActionBin), Req3)
+            maybe_echo(binary_to_list(Method), binary_to_list(ActionBin), Req3)
     end,
     {ok, Req, Opts}.
 
 
-maybe_echo(<<"POST">>, undefined, Req) ->
+maybe_echo("POST", undefined, Req) ->
     echo(unicode:characters_to_binary("1"), Req);
 maybe_echo(Method, undefined, Req) when Method == <<"GET">> orelse Method == <<"POST">> ->
     echo(unicode:characters_to_binary("1"), Req);
-maybe_echo(<<"POST">>, "login", Req0) ->
+maybe_echo("POST", "login", Req0) ->
     {ok, PostVals, Req} = cowboy_req:read_urlencoded_body(Req0),
     MobileBin = proplists:get_value(<<"mobile">>, PostVals),
     PasswdBin = proplists:get_value(<<"passwd">>, PostVals),
-%%    Sql = io_lib:format("select * from users where mobile = '~s'", [Mobile]),
-    case gen_server:call(cache, {get_data_by_field,?table_users,#field_users.mobile,MobileBin}) of
+    case gen_server:call(cache, {fetch_data_by_field,?table_users,#field_users.mobile,MobileBin}) of
         [#field_users{pwd = PwdBin,user_id = UserIDBin}]->
             case PasswdBin == PwdBin of
                 true->
@@ -62,11 +61,10 @@ maybe_echo(<<"POST">>, "login", Req0) ->
         _ ->
             echo(unicode:characters_to_binary("login fail"), Req)
     end;
-%%maybe_echo(<<"POST">>, false, Req) ->
-%%    cowboy_req:reply(400, [], <<"Missing body.">>, Req);
-maybe_echo(ReqWay, HasBody, Req) ->
-    log4erl:info("ReqWay = ~s",[binary_to_list(ReqWay)]),
-    log4erl:info("HasBody = ~s",[binary_to_list(HasBody)]),
+
+maybe_echo(ReqWay, Action, Req) ->
+    log4erl:info("ReqWay = ~s",[ReqWay]),
+    log4erl:info("HasBody = ~s",[Action]),
     log4erl:info("Req = ~w",[Req]),
     %% Method not allowed.
     cowboy_req:reply(405, Req).

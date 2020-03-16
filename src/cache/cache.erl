@@ -68,13 +68,10 @@ init([]) ->
     {noreply, NewState :: #cache_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #cache_state{}} |
     {stop, Reason :: term(), NewState :: #cache_state{}}).
-%%{get_data_by_field,table_users,4,<<"17380630290">>},
-handle_call({get_data_by_field,TableAtom,Index,FieldData}, _From, State = #cache_state{}) ->
-    Data = get_data_by_field(TableAtom,Index,FieldData),
-    log4erl:info("get_data_by_field Data = ~w",[Data]),
-    {reply, Data, State};
-handle_call(_Request, _From, State = #cache_state{}) ->
-    {reply, ok, State}.
+handle_call(Request, _From, State = #cache_state{}) ->
+    log4erl:warn("module ~w recive request ~w",[?MODULE,Request]),
+    Data = ?CATCH(do_handle_call(Request)),
+    {reply, Data, State}.
 
 %% @private
 %% @doc Handling cast messages
@@ -91,7 +88,13 @@ handle_cast(_Request, State = #cache_state{}) ->
     {noreply, NewState :: #cache_state{}} |
     {noreply, NewState :: #cache_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #cache_state{}}).
-handle_info(write_to_db, State = #cache_state{})->
+handle_info(Info, State = #cache_state{}) ->
+%%    log4erl:info("module ~w recive message ~w",[?MODULE,Info]),
+    ?CATCH(do_handle_info(Info)),
+    {noreply, State}.
+
+do_handle_info(write_to_db)->
+    erlang:send_after(?TICK_WRITE_TO_DB_INTERVAL,self(),write_to_db),
     case get_waite_to_db_key() of
         []->ok;
         Data->
@@ -107,17 +110,14 @@ handle_info(write_to_db, State = #cache_state{})->
                 end,
                 Data
             )
-    end,
-    erlang:send_after(?TICK_WRITE_TO_DB_INTERVAL,self(),write_to_db),
-    {noreply, State};
-handle_info(get_cache, State = #cache_state{})->
-    erlang:send(db,{get_cache,?TABLE_LIST}),
-    {noreply, State};
-handle_info({callback_cache,TableAtom,RowDataList}, State)->
-    put_table_data(TableAtom,RowDataList),
-    {noreply, State};
-handle_info(_Info, State = #cache_state{}) ->
-    {noreply, State}.
+    end;
+do_handle_info(get_cache)->
+    erlang:send(db,{get_cache,?TABLE_LIST});
+do_handle_info({callback_cache,TableAtom,RowDataList})->
+    put_table_data(TableAtom,RowDataList);
+do_handle_info(Info) ->
+    log4erl:warn("module ~w message ~w",[?MODULE,Info]),
+    ok.
 
 %% @private
 %% @doc This function is called by a gen_server when it is about to
@@ -140,7 +140,13 @@ code_change(_OldVsn, State = #cache_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%% IndexKey #field_users....
+
+do_handle_call({fetch_data_by_field,TableAtom,Index,FieldData})->
+    fetch_data_by_field(TableAtom,Index,FieldData);
+do_handle_call(Request) ->
+    log4erl:warn("module ~w undefined request ~w",[?MODULE,Request]),
+    ok.
+
 get_data_by_pri_key(TableAtom,KeyData)->
     AllData = get_table_data(db:table_atom_name(TableAtom)),
     case lists:keyfind(KeyData,2,AllData) of
@@ -148,15 +154,15 @@ get_data_by_pri_key(TableAtom,KeyData)->
         _->[]
     end.
 
-get_data_by_field(TableAtom,Index,FieldData)->
+fetch_data_by_field(TableAtom,Index,FieldData)->
     AllData = get_table_data(db:table_atom_name(TableAtom)),
-    get_data_by_field(Index,FieldData,AllData,[]).
-get_data_by_field(Index,FieldData,[RowData|AllData],Acc)->
+    fetch_data_by_field(Index,FieldData,AllData,[]).
+fetch_data_by_field(Index,FieldData,[RowData|AllData],Acc)->
     case lists:nth(Index,tuple_to_list(RowData)) == FieldData of
-        true->get_data_by_field(Index,FieldData,AllData,[RowData|Acc]);
-        _->get_data_by_field(Index,FieldData,AllData,Acc)
+        true->fetch_data_by_field(Index,FieldData,AllData,[RowData|Acc]);
+        _->fetch_data_by_field(Index,FieldData,AllData,Acc)
     end;
-get_data_by_field(_Index,_FieldData,[],Acc)->lists:reverse(Acc).
+fetch_data_by_field(_Index,_FieldData,[],Acc)->lists:reverse(Acc).
 
 
 write_data(TableAtom,DataTup)->
