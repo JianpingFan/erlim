@@ -18,6 +18,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
     code_change/3]).
 
+-export([write_data/2]).
 -define(SERVER, ?MODULE).
 
 -define(IS_HAVA_NEW_DATA,is_hava_new_data). %% [{table,Key}|...] 待写数据库表和key
@@ -111,6 +112,19 @@ do_handle_info(write_to_db)->
                 Data
             )
     end;
+do_handle_info({write_data,TableAtom,DataTup})->
+    case lists:member(db:table_atom_name(TableAtom),?TABLE_LIST) of
+        false->
+            log4erl:error("write_data TableAtom = ~w not found",[TableAtom]),
+            ok;
+        true->
+            AllData = get_table_data(db:table_atom_name(TableAtom)),
+            List = tuple_to_list(DataTup),
+            [_,PrimaryKeyData|_] = List,
+            NewAllData = lists:keystore(PrimaryKeyData,2,AllData,DataTup),
+            put_waite_to_db_key({TableAtom,PrimaryKeyData}),
+            put({?DATA_KEY,TableAtom},NewAllData)
+    end;
 do_handle_info(get_cache)->
     erlang:send(db,{get_cache,?TABLE_LIST});
 do_handle_info({callback_cache,TableAtom,RowDataList})->
@@ -166,18 +180,7 @@ fetch_data_by_field(_Index,_FieldData,[],Acc)->lists:reverse(Acc).
 
 
 write_data(TableAtom,DataTup)->
-    case lists:member(db:table_atom_name(TableAtom),?TABLE_LIST) of
-        false->
-            log4erl:error("write_data TableAtom = ~w not found",[TableAtom]),
-            ok;
-        true->
-            AllData = get_table_data(db:table_atom_name(TableAtom)),
-            List = tuple_to_list(DataTup),
-            [_,PrimaryKeyData|_] = List,
-            NewAllData = lists:keystore(PrimaryKeyData,2,AllData,DataTup),
-            put_waite_to_db_key({TableAtom,PrimaryKeyData}),
-            put({?DATA_KEY,TableAtom},NewAllData)
-    end,
+    erlang:send(cache,{write_data,TableAtom,DataTup}),
     ok.
 
 get_waite_to_db_key()->
