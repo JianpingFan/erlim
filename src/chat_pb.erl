@@ -54,20 +54,24 @@
 %% message types
 -type person() :: #person{}.
 
--export_type(['person'/0]).
+-type cs_all_frends() :: #cs_all_frends{}.
 
--spec encode_msg(#person{}) -> binary().
+-type p_frend() :: #p_frend{}.
+
+-export_type(['person'/0, 'cs_all_frends'/0, 'p_frend'/0]).
+
+-spec encode_msg(#person{} | #cs_all_frends{} | #p_frend{}) -> binary().
 encode_msg(Msg) when tuple_size(Msg) >= 1 ->
     encode_msg(Msg, element(1, Msg), []).
 
--spec encode_msg(#person{}, atom() | list()) -> binary().
+-spec encode_msg(#person{} | #cs_all_frends{} | #p_frend{}, atom() | list()) -> binary().
 encode_msg(Msg, MsgName) when is_atom(MsgName) ->
     encode_msg(Msg, MsgName, []);
 encode_msg(Msg, Opts)
     when tuple_size(Msg) >= 1, is_list(Opts) ->
     encode_msg(Msg, element(1, Msg), Opts).
 
--spec encode_msg(#person{}, atom(), list()) -> binary().
+-spec encode_msg(#person{} | #cs_all_frends{} | #p_frend{}, atom(), list()) -> binary().
 encode_msg(Msg, MsgName, Opts) ->
     case proplists:get_bool(verify, Opts) of
       true -> verify_msg(Msg, MsgName, Opts);
@@ -76,7 +80,12 @@ encode_msg(Msg, MsgName, Opts) ->
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
       person ->
-	  encode_msg_person(id(Msg, TrUserData), TrUserData)
+	  encode_msg_person(id(Msg, TrUserData), TrUserData);
+      cs_all_frends ->
+	  encode_msg_cs_all_frends(id(Msg, TrUserData),
+				   TrUserData);
+      p_frend ->
+	  encode_msg_p_frend(id(Msg, TrUserData), TrUserData)
     end.
 
 
@@ -94,6 +103,59 @@ encode_msg_person(#person{age = F1, name = F2}, Bin,
       TrF2 = id(F2, TrUserData),
       e_type_string(TrF2, <<B1/binary, 18>>, TrUserData)
     end.
+
+encode_msg_cs_all_frends(Msg, TrUserData) ->
+    encode_msg_cs_all_frends(Msg, <<>>, TrUserData).
+
+
+encode_msg_cs_all_frends(#cs_all_frends{all_frends =
+					    F1},
+			 Bin, TrUserData) ->
+    begin
+      TrF1 = id(F1, TrUserData),
+      if TrF1 == [] -> Bin;
+	 true ->
+	     e_field_cs_all_frends_all_frends(TrF1, Bin, TrUserData)
+      end
+    end.
+
+encode_msg_p_frend(Msg, TrUserData) ->
+    encode_msg_p_frend(Msg, <<>>, TrUserData).
+
+
+encode_msg_p_frend(#p_frend{age = F1, name = F2,
+			    user_id = F3},
+		   Bin, TrUserData) ->
+    B1 = begin
+	   TrF1 = id(F1, TrUserData),
+	   e_type_int32(TrF1, <<Bin/binary, 8>>, TrUserData)
+	 end,
+    B2 = begin
+	   TrF2 = id(F2, TrUserData),
+	   e_type_string(TrF2, <<B1/binary, 18>>, TrUserData)
+	 end,
+    begin
+      TrF3 = id(F3, TrUserData),
+      e_type_int32(TrF3, <<B2/binary, 24>>, TrUserData)
+    end.
+
+e_mfield_cs_all_frends_all_frends(Msg, Bin,
+				  TrUserData) ->
+    SubBin = encode_msg_p_frend(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_field_cs_all_frends_all_frends([Elem | Rest], Bin,
+				 TrUserData) ->
+    Bin2 = <<Bin/binary, 10>>,
+    Bin3 = e_mfield_cs_all_frends_all_frends(id(Elem,
+						TrUserData),
+					     Bin2, TrUserData),
+    e_field_cs_all_frends_all_frends(Rest, Bin3,
+				     TrUserData);
+e_field_cs_all_frends_all_frends([], Bin,
+				 _TrUserData) ->
+    Bin.
 
 -compile({nowarn_unused_function,e_type_sint/3}).
 e_type_sint(Value, Bin, _TrUserData) when Value >= 0 ->
@@ -210,7 +272,12 @@ decode_msg_1_catch(Bin, MsgName, TrUserData) ->
 -endif.
 
 decode_msg_2_doit(person, Bin, TrUserData) ->
-    id(decode_msg_person(Bin, TrUserData), TrUserData).
+    id(decode_msg_person(Bin, TrUserData), TrUserData);
+decode_msg_2_doit(cs_all_frends, Bin, TrUserData) ->
+    id(decode_msg_cs_all_frends(Bin, TrUserData),
+       TrUserData);
+decode_msg_2_doit(p_frend, Bin, TrUserData) ->
+    id(decode_msg_p_frend(Bin, TrUserData), TrUserData).
 
 
 
@@ -332,6 +399,266 @@ skip_64_person(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
     dfp_read_field_def_person(Rest, Z1, Z2, F@_1, F@_2,
 			      TrUserData).
 
+decode_msg_cs_all_frends(Bin, TrUserData) ->
+    dfp_read_field_def_cs_all_frends(Bin, 0, 0,
+				     id([], TrUserData), TrUserData).
+
+dfp_read_field_def_cs_all_frends(<<10, Rest/binary>>,
+				 Z1, Z2, F@_1, TrUserData) ->
+    d_field_cs_all_frends_all_frends(Rest, Z1, Z2, F@_1,
+				     TrUserData);
+dfp_read_field_def_cs_all_frends(<<>>, 0, 0, R1,
+				 TrUserData) ->
+    #cs_all_frends{all_frends =
+		       lists_reverse(R1, TrUserData)};
+dfp_read_field_def_cs_all_frends(Other, Z1, Z2, F@_1,
+				 TrUserData) ->
+    dg_read_field_def_cs_all_frends(Other, Z1, Z2, F@_1,
+				    TrUserData).
+
+dg_read_field_def_cs_all_frends(<<1:1, X:7,
+				  Rest/binary>>,
+				N, Acc, F@_1, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_cs_all_frends(Rest, N + 7,
+				    X bsl N + Acc, F@_1, TrUserData);
+dg_read_field_def_cs_all_frends(<<0:1, X:7,
+				  Rest/binary>>,
+				N, Acc, F@_1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 ->
+	  d_field_cs_all_frends_all_frends(Rest, 0, 0, F@_1,
+					   TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 ->
+		skip_varint_cs_all_frends(Rest, 0, 0, F@_1, TrUserData);
+	    1 ->
+		skip_64_cs_all_frends(Rest, 0, 0, F@_1, TrUserData);
+	    2 ->
+		skip_length_delimited_cs_all_frends(Rest, 0, 0, F@_1,
+						    TrUserData);
+	    3 ->
+		skip_group_cs_all_frends(Rest, Key bsr 3, 0, F@_1,
+					 TrUserData);
+	    5 -> skip_32_cs_all_frends(Rest, 0, 0, F@_1, TrUserData)
+	  end
+    end;
+dg_read_field_def_cs_all_frends(<<>>, 0, 0, R1,
+				TrUserData) ->
+    #cs_all_frends{all_frends =
+		       lists_reverse(R1, TrUserData)}.
+
+d_field_cs_all_frends_all_frends(<<1:1, X:7,
+				   Rest/binary>>,
+				 N, Acc, F@_1, TrUserData)
+    when N < 57 ->
+    d_field_cs_all_frends_all_frends(Rest, N + 7,
+				     X bsl N + Acc, F@_1, TrUserData);
+d_field_cs_all_frends_all_frends(<<0:1, X:7,
+				   Rest/binary>>,
+				 N, Acc, Prev, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bs:Len/binary, Rest2/binary>> = Rest,
+			   {id(decode_msg_p_frend(Bs, TrUserData), TrUserData),
+			    Rest2}
+			 end,
+    dfp_read_field_def_cs_all_frends(RestF, 0, 0,
+				     cons(NewFValue, Prev, TrUserData),
+				     TrUserData).
+
+skip_varint_cs_all_frends(<<1:1, _:7, Rest/binary>>, Z1,
+			  Z2, F@_1, TrUserData) ->
+    skip_varint_cs_all_frends(Rest, Z1, Z2, F@_1,
+			      TrUserData);
+skip_varint_cs_all_frends(<<0:1, _:7, Rest/binary>>, Z1,
+			  Z2, F@_1, TrUserData) ->
+    dfp_read_field_def_cs_all_frends(Rest, Z1, Z2, F@_1,
+				     TrUserData).
+
+skip_length_delimited_cs_all_frends(<<1:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, F@_1, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_cs_all_frends(Rest, N + 7,
+					X bsl N + Acc, F@_1, TrUserData);
+skip_length_delimited_cs_all_frends(<<0:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, F@_1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_cs_all_frends(Rest2, 0, 0, F@_1,
+				     TrUserData).
+
+skip_group_cs_all_frends(Bin, FNum, Z2, F@_1,
+			 TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_cs_all_frends(Rest, 0, Z2, F@_1,
+				     TrUserData).
+
+skip_32_cs_all_frends(<<_:32, Rest/binary>>, Z1, Z2,
+		      F@_1, TrUserData) ->
+    dfp_read_field_def_cs_all_frends(Rest, Z1, Z2, F@_1,
+				     TrUserData).
+
+skip_64_cs_all_frends(<<_:64, Rest/binary>>, Z1, Z2,
+		      F@_1, TrUserData) ->
+    dfp_read_field_def_cs_all_frends(Rest, Z1, Z2, F@_1,
+				     TrUserData).
+
+decode_msg_p_frend(Bin, TrUserData) ->
+    dfp_read_field_def_p_frend(Bin, 0, 0,
+			       id(undefined, TrUserData),
+			       id(undefined, TrUserData),
+			       id(undefined, TrUserData), TrUserData).
+
+dfp_read_field_def_p_frend(<<8, Rest/binary>>, Z1, Z2,
+			   F@_1, F@_2, F@_3, TrUserData) ->
+    d_field_p_frend_age(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			TrUserData);
+dfp_read_field_def_p_frend(<<18, Rest/binary>>, Z1, Z2,
+			   F@_1, F@_2, F@_3, TrUserData) ->
+    d_field_p_frend_name(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			 TrUserData);
+dfp_read_field_def_p_frend(<<24, Rest/binary>>, Z1, Z2,
+			   F@_1, F@_2, F@_3, TrUserData) ->
+    d_field_p_frend_user_id(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			    TrUserData);
+dfp_read_field_def_p_frend(<<>>, 0, 0, F@_1, F@_2, F@_3,
+			   _) ->
+    #p_frend{age = F@_1, name = F@_2, user_id = F@_3};
+dfp_read_field_def_p_frend(Other, Z1, Z2, F@_1, F@_2,
+			   F@_3, TrUserData) ->
+    dg_read_field_def_p_frend(Other, Z1, Z2, F@_1, F@_2,
+			      F@_3, TrUserData).
+
+dg_read_field_def_p_frend(<<1:1, X:7, Rest/binary>>, N,
+			  Acc, F@_1, F@_2, F@_3, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_p_frend(Rest, N + 7, X bsl N + Acc,
+			      F@_1, F@_2, F@_3, TrUserData);
+dg_read_field_def_p_frend(<<0:1, X:7, Rest/binary>>, N,
+			  Acc, F@_1, F@_2, F@_3, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      8 ->
+	  d_field_p_frend_age(Rest, 0, 0, F@_1, F@_2, F@_3,
+			      TrUserData);
+      18 ->
+	  d_field_p_frend_name(Rest, 0, 0, F@_1, F@_2, F@_3,
+			       TrUserData);
+      24 ->
+	  d_field_p_frend_user_id(Rest, 0, 0, F@_1, F@_2, F@_3,
+				  TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 ->
+		skip_varint_p_frend(Rest, 0, 0, F@_1, F@_2, F@_3,
+				    TrUserData);
+	    1 ->
+		skip_64_p_frend(Rest, 0, 0, F@_1, F@_2, F@_3,
+				TrUserData);
+	    2 ->
+		skip_length_delimited_p_frend(Rest, 0, 0, F@_1, F@_2,
+					      F@_3, TrUserData);
+	    3 ->
+		skip_group_p_frend(Rest, Key bsr 3, 0, F@_1, F@_2, F@_3,
+				   TrUserData);
+	    5 ->
+		skip_32_p_frend(Rest, 0, 0, F@_1, F@_2, F@_3,
+				TrUserData)
+	  end
+    end;
+dg_read_field_def_p_frend(<<>>, 0, 0, F@_1, F@_2, F@_3,
+			  _) ->
+    #p_frend{age = F@_1, name = F@_2, user_id = F@_3}.
+
+d_field_p_frend_age(<<1:1, X:7, Rest/binary>>, N, Acc,
+		    F@_1, F@_2, F@_3, TrUserData)
+    when N < 57 ->
+    d_field_p_frend_age(Rest, N + 7, X bsl N + Acc, F@_1,
+			F@_2, F@_3, TrUserData);
+d_field_p_frend_age(<<0:1, X:7, Rest/binary>>, N, Acc,
+		    _, F@_2, F@_3, TrUserData) ->
+    {NewFValue, RestF} = {begin
+			    <<Res:32/signed-native>> = <<(X bsl N +
+							    Acc):32/unsigned-native>>,
+			    id(Res, TrUserData)
+			  end,
+			  Rest},
+    dfp_read_field_def_p_frend(RestF, 0, 0, NewFValue, F@_2,
+			       F@_3, TrUserData).
+
+d_field_p_frend_name(<<1:1, X:7, Rest/binary>>, N, Acc,
+		     F@_1, F@_2, F@_3, TrUserData)
+    when N < 57 ->
+    d_field_p_frend_name(Rest, N + 7, X bsl N + Acc, F@_1,
+			 F@_2, F@_3, TrUserData);
+d_field_p_frend_name(<<0:1, X:7, Rest/binary>>, N, Acc,
+		     F@_1, _, F@_3, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
+			   {id(binary:copy(Bytes), TrUserData), Rest2}
+			 end,
+    dfp_read_field_def_p_frend(RestF, 0, 0, F@_1, NewFValue,
+			       F@_3, TrUserData).
+
+d_field_p_frend_user_id(<<1:1, X:7, Rest/binary>>, N,
+			Acc, F@_1, F@_2, F@_3, TrUserData)
+    when N < 57 ->
+    d_field_p_frend_user_id(Rest, N + 7, X bsl N + Acc,
+			    F@_1, F@_2, F@_3, TrUserData);
+d_field_p_frend_user_id(<<0:1, X:7, Rest/binary>>, N,
+			Acc, F@_1, F@_2, _, TrUserData) ->
+    {NewFValue, RestF} = {begin
+			    <<Res:32/signed-native>> = <<(X bsl N +
+							    Acc):32/unsigned-native>>,
+			    id(Res, TrUserData)
+			  end,
+			  Rest},
+    dfp_read_field_def_p_frend(RestF, 0, 0, F@_1, F@_2,
+			       NewFValue, TrUserData).
+
+skip_varint_p_frend(<<1:1, _:7, Rest/binary>>, Z1, Z2,
+		    F@_1, F@_2, F@_3, TrUserData) ->
+    skip_varint_p_frend(Rest, Z1, Z2, F@_1, F@_2, F@_3,
+			TrUserData);
+skip_varint_p_frend(<<0:1, _:7, Rest/binary>>, Z1, Z2,
+		    F@_1, F@_2, F@_3, TrUserData) ->
+    dfp_read_field_def_p_frend(Rest, Z1, Z2, F@_1, F@_2,
+			       F@_3, TrUserData).
+
+skip_length_delimited_p_frend(<<1:1, X:7, Rest/binary>>,
+			      N, Acc, F@_1, F@_2, F@_3, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_p_frend(Rest, N + 7,
+				  X bsl N + Acc, F@_1, F@_2, F@_3, TrUserData);
+skip_length_delimited_p_frend(<<0:1, X:7, Rest/binary>>,
+			      N, Acc, F@_1, F@_2, F@_3, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_p_frend(Rest2, 0, 0, F@_1, F@_2,
+			       F@_3, TrUserData).
+
+skip_group_p_frend(Bin, FNum, Z2, F@_1, F@_2, F@_3,
+		   TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_p_frend(Rest, 0, Z2, F@_1, F@_2,
+			       F@_3, TrUserData).
+
+skip_32_p_frend(<<_:32, Rest/binary>>, Z1, Z2, F@_1,
+		F@_2, F@_3, TrUserData) ->
+    dfp_read_field_def_p_frend(Rest, Z1, Z2, F@_1, F@_2,
+			       F@_3, TrUserData).
+
+skip_64_p_frend(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
+		F@_2, F@_3, TrUserData) ->
+    dfp_read_field_def_p_frend(Rest, Z1, Z2, F@_1, F@_2,
+			       F@_3, TrUserData).
+
 read_group(Bin, FieldNum) ->
     {NumBytes, EndTagLen} = read_gr_b(Bin, 0, 0, 0, 0, FieldNum),
     <<Group:NumBytes/binary, _:EndTagLen/binary, Rest/binary>> = Bin,
@@ -404,13 +731,38 @@ merge_msgs(Prev, New, Opts)
 merge_msgs(Prev, New, MsgName, Opts) ->
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
-      person -> merge_msg_person(Prev, New, TrUserData)
+      person -> merge_msg_person(Prev, New, TrUserData);
+      cs_all_frends ->
+	  merge_msg_cs_all_frends(Prev, New, TrUserData);
+      p_frend -> merge_msg_p_frend(Prev, New, TrUserData)
     end.
 
 -compile({nowarn_unused_function,merge_msg_person/3}).
 merge_msg_person(#person{},
 		 #person{age = NFage, name = NFname}, _) ->
     #person{age = NFage, name = NFname}.
+
+-compile({nowarn_unused_function,merge_msg_cs_all_frends/3}).
+merge_msg_cs_all_frends(#cs_all_frends{all_frends =
+					   PFall_frends},
+			#cs_all_frends{all_frends = NFall_frends},
+			TrUserData) ->
+    #cs_all_frends{all_frends =
+		       if PFall_frends /= undefined,
+			  NFall_frends /= undefined ->
+			      'erlang_++'(PFall_frends, NFall_frends,
+					  TrUserData);
+			  PFall_frends == undefined -> NFall_frends;
+			  NFall_frends == undefined -> PFall_frends
+		       end}.
+
+-compile({nowarn_unused_function,merge_msg_p_frend/3}).
+merge_msg_p_frend(#p_frend{},
+		  #p_frend{age = NFage, name = NFname,
+			   user_id = NFuser_id},
+		  _) ->
+    #p_frend{age = NFage, name = NFname,
+	     user_id = NFuser_id}.
 
 
 verify_msg(Msg) when tuple_size(Msg) >= 1 ->
@@ -429,6 +781,9 @@ verify_msg(Msg, MsgName, Opts) ->
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
       person -> v_msg_person(Msg, [MsgName], TrUserData);
+      cs_all_frends ->
+	  v_msg_cs_all_frends(Msg, [MsgName], TrUserData);
+      p_frend -> v_msg_p_frend(Msg, [MsgName], TrUserData);
       _ -> mk_type_error(not_a_known_message, Msg, [])
     end.
 
@@ -442,6 +797,35 @@ v_msg_person(#person{age = F1, name = F2}, Path,
     ok;
 v_msg_person(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, person}, X, Path).
+
+-compile({nowarn_unused_function,v_msg_cs_all_frends/3}).
+-dialyzer({nowarn_function,v_msg_cs_all_frends/3}).
+v_msg_cs_all_frends(#cs_all_frends{all_frends = F1},
+		    Path, TrUserData) ->
+    if is_list(F1) ->
+	   _ = [v_msg_p_frend(Elem, [all_frends | Path],
+			      TrUserData)
+		|| Elem <- F1],
+	   ok;
+       true ->
+	   mk_type_error({invalid_list_of, {msg, p_frend}}, F1,
+			 [all_frends | Path])
+    end,
+    ok;
+v_msg_cs_all_frends(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, cs_all_frends}, X, Path).
+
+-compile({nowarn_unused_function,v_msg_p_frend/3}).
+-dialyzer({nowarn_function,v_msg_p_frend/3}).
+v_msg_p_frend(#p_frend{age = F1, name = F2,
+		       user_id = F3},
+	      Path, TrUserData) ->
+    v_type_int32(F1, [age | Path], TrUserData),
+    v_type_string(F2, [name | Path], TrUserData),
+    v_type_int32(F3, [user_id | Path], TrUserData),
+    ok;
+v_msg_p_frend(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, p_frend}, X, Path).
 
 -compile({nowarn_unused_function,v_type_int32/3}).
 -dialyzer({nowarn_function,v_type_int32/3}).
@@ -515,16 +899,28 @@ get_msg_defs() ->
       [#field{name = age, fnum = 1, rnum = 2, type = int32,
 	      occurrence = required, opts = []},
        #field{name = name, fnum = 2, rnum = 3, type = string,
+	      occurrence = required, opts = []}]},
+     {{msg, cs_all_frends},
+      [#field{name = all_frends, fnum = 1, rnum = 2,
+	      type = {msg, p_frend}, occurrence = repeated,
+	      opts = []}]},
+     {{msg, p_frend},
+      [#field{name = age, fnum = 1, rnum = 2, type = int32,
+	      occurrence = required, opts = []},
+       #field{name = name, fnum = 2, rnum = 3, type = string,
+	      occurrence = required, opts = []},
+       #field{name = user_id, fnum = 3, rnum = 4, type = int32,
 	      occurrence = required, opts = []}]}].
 
 
-get_msg_names() -> [person].
+get_msg_names() -> [person, cs_all_frends, p_frend].
 
 
 get_group_names() -> [].
 
 
-get_msg_or_group_names() -> [person].
+get_msg_or_group_names() ->
+    [person, cs_all_frends, p_frend].
 
 
 get_enum_names() -> [].
@@ -546,6 +942,17 @@ find_msg_def(person) ->
     [#field{name = age, fnum = 1, rnum = 2, type = int32,
 	    occurrence = required, opts = []},
      #field{name = name, fnum = 2, rnum = 3, type = string,
+	    occurrence = required, opts = []}];
+find_msg_def(cs_all_frends) ->
+    [#field{name = all_frends, fnum = 1, rnum = 2,
+	    type = {msg, p_frend}, occurrence = repeated,
+	    opts = []}];
+find_msg_def(p_frend) ->
+    [#field{name = age, fnum = 1, rnum = 2, type = int32,
+	    occurrence = required, opts = []},
+     #field{name = name, fnum = 2, rnum = 3, type = string,
+	    occurrence = required, opts = []},
+     #field{name = user_id, fnum = 3, rnum = 4, type = int32,
 	    occurrence = required, opts = []}];
 find_msg_def(_) -> error.
 
@@ -613,10 +1020,14 @@ service_and_rpc_name_to_fqbins(S, R) ->
 
 
 fqbin_to_msg_name(<<"person">>) -> person;
+fqbin_to_msg_name(<<"cs_all_frends">>) -> cs_all_frends;
+fqbin_to_msg_name(<<"p_frend">>) -> p_frend;
 fqbin_to_msg_name(E) -> error({gpb_error, {badmsg, E}}).
 
 
 msg_name_to_fqbin(person) -> <<"person">>;
+msg_name_to_fqbin(cs_all_frends) -> <<"cs_all_frends">>;
+msg_name_to_fqbin(p_frend) -> <<"p_frend">>;
 msg_name_to_fqbin(E) -> error({gpb_error, {badmsg, E}}).
 
 
@@ -657,7 +1068,8 @@ get_all_source_basenames() -> ["chat.proto"].
 get_all_proto_names() -> ["chat"].
 
 
-get_msg_containment("chat") -> [person];
+get_msg_containment("chat") ->
+    [cs_all_frends, p_frend, person];
 get_msg_containment(P) ->
     error({gpb_error, {badproto, P}}).
 
@@ -682,6 +1094,8 @@ get_enum_containment(P) ->
     error({gpb_error, {badproto, P}}).
 
 
+get_proto_by_msg_name_as_fqbin(<<"cs_all_frends">>) -> "chat";
+get_proto_by_msg_name_as_fqbin(<<"p_frend">>) -> "chat";
 get_proto_by_msg_name_as_fqbin(<<"person">>) -> "chat";
 get_proto_by_msg_name_as_fqbin(E) ->
     error({gpb_error, {badmsg, E}}).

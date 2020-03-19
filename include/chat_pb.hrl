@@ -15,4 +15,20 @@
         }).
 -endif.
 
+-ifndef('CS_ALL_FRENDS_PB_H').
+-define('CS_ALL_FRENDS_PB_H', true).
+-record(cs_all_frends,
+        {all_frends = []        :: [chat_pb:p_frend()] | undefined % = 1
+        }).
+-endif.
+
+-ifndef('P_FREND_PB_H').
+-define('P_FREND_PB_H', true).
+-record(p_frend,
+        {age                    :: integer(),       % = 1, 32 bits
+         name                   :: iodata(),        % = 2
+         user_id                :: integer()        % = 3, 32 bits
+        }).
+-endif.
+
 -endif.
