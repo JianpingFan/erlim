@@ -1,0 +1,4 @@
+message person {
+    required int32 age = 1;
+    required string name = 2;
+}
