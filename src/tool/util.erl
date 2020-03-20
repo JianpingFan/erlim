@@ -86,6 +86,21 @@
 -define(GREGORIAN_INTERVIAL_TIME,  (calendar:datetime_to_gregorian_seconds(data_setting:get( time_zone)))).
 
 
+unicast(UserID, DataRecord) when is_integer(UserID) andalso is_tuple(DataRecord) ->
+  case UserID of
+    0->log4erl:error("unicast role_id=0, Data=~w",[DataRecord]);
+    _->ignore
+  end,
+  case ws:get_user_ws_pid(UserID) of
+    PID when is_pid(PID) ->
+      erlang:send(PID,{reply,DataRecord});
+    _ ->
+      log4erl:error("unicast pid not found role_id=~w, Data=~w",[UserID,DataRecord])
+  end;
+unicast(_UserID, _DataRecord)->
+  ignore.
+
+
 %% 2的N次方
 pow(N) ->
   pow(N,1).

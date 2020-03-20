@@ -3,18 +3,15 @@
 
 -define(ETS_USER_ONLINE,ets_user_online). %%在线用户
 -define(undefined,undefined).
-
+-define(route,route).
 
 -record(user_online,{
     token,
-    user_id
+    user_id,
+    ws_pid
 }).
 
-
-
-
-
-
+-define(unicast(UserID, Info),util:unicast(UserID, Info)).
 
 -define(CATCH(Expression), (
     try Expression

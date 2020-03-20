@@ -5,5 +5,6 @@
 -include("def_common.hrl").
 -include("def_login.hrl").
 -include("def_table.hrl").
+-include("im_pb.hrl").
 
 -endif.

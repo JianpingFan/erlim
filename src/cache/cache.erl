@@ -18,19 +18,13 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
     code_change/3]).
 
--export([write_data/2]).
+-export([write_data/2,get_table_data/1]).
 -define(SERVER, ?MODULE).
 
 -define(IS_HAVA_NEW_DATA,is_hava_new_data). %% [{table,Key}|...] 待写数据库表和key
 -define(TICK_WRITE_TO_DB_INTERVAL,5000).
 
 -define(DATA_KEY,data_key). %% 内存中缓存的数据库数据
--record(table_data,{
-    data,   %%数据坨
-    key,
-    status  %%数据状态
-
-}).
 
 -record(cache_state, {}).
 
@@ -129,6 +123,13 @@ do_handle_info(get_cache)->
     erlang:send(db,{get_cache,?TABLE_LIST});
 do_handle_info({callback_cache,TableAtom,RowDataList})->
     put_table_data(TableAtom,RowDataList);
+do_handle_info({client_msg, RoleID,Info}) ->
+    FuncName = element(1, Info),
+    Module = list_to_atom(lists:nth(2,string:tokens(atom_to_list(FuncName),"_"))),
+    Module:FuncName(RoleID,Info);
+do_handle_info({?route,Module,Info})->
+    element(1,Info),
+    Module:handle_info(Info);
 do_handle_info(Info) ->
     log4erl:warn("module ~w message ~w",[?MODULE,Info]),
     ok.

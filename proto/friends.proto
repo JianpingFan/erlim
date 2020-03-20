@@ -1,0 +1,14 @@
+package frends;
+
+message cs_frends_all_friends{
+
+}
+
+message sc_frends_all_friends{
+    repeated p_frend        all_frends = 1;
+}
+
+message p_frend{
+    required int32          user_id     = 1;
+    required string         nickname    = 2;
+}

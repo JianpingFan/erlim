@@ -111,7 +111,7 @@ routes() ->
   [
     {'_', [
       {"/http/:action", http, []},
-      {"/ws/token/:token", erlim_ws_handler, []}
+      {"/ws/token/:token", ws, []}
     ]}
   ].
 
