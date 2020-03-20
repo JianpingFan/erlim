@@ -35,7 +35,6 @@ init(Req, Opts) ->
       {ok, Req, Opts}
   end.
 
-
 websocket_init(State) ->
   {[], State}.
 
@@ -45,13 +44,19 @@ websocket_handle({text, Info}, [#state{user_id = UserID}] = State) ->
 websocket_handle(_Data, State) ->
   {[], State}.
 
-websocket_info({reply, Msg}, State) ->
+websocket_info({reply, Msg}, State) when is_binary(Msg)->
   {[{text, Msg}], State};
+websocket_info({reply, Msg}, State) when is_tuple(Msg)->
+  {[{text, im_pb:encode_msg(Msg)}], State};
 
 websocket_info({timeout, _Ref, _Msg}, State) ->
   {[], State};
 websocket_info(_Info, State) ->
   {[], State}.
+
+
+
+
 
 update_user_ws_pid(TokenID, WsPID) when is_integer(TokenID) andalso is_pid(WsPID) ->
   case http:get_user_online(TokenID) of

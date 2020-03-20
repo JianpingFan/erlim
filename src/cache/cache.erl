@@ -194,8 +194,6 @@ put_waite_to_db_key({TableAtom,KeyData})->
     put(?IS_HAVA_NEW_DATA,[{TableAtom,KeyData}|Data]).
 
 
-
-
 get_table_data(TableAtom)->
     case get({?DATA_KEY,TableAtom}) of
         ?undefined->[];

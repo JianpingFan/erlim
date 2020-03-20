@@ -1,0 +1,35 @@
+package chat;
+
+message p_msg{
+    required    int32           msg_type    =   1;// 消息类型 1、文本  2、图片  3、视频
+    optional    string          text_msg    =   2;
+    optional    bytes           pic         =   3;
+}
+
+message cs_chat_single{
+    required    int32           receiver_id =   1;
+    required    p_msg           msg         =   2;
+}
+
+message sc_chat_single{
+    required    int32           result      =   1;// 1、发送成功  2、发送失败
+    required    int32           msg_id      =   2;// 消息ID,用于排序
+}
+
+message cs_chat_group{
+    required    int32           group_id    =   1;
+    required    p_msg           msg         =   2;
+}
+
+message sc_chat_group{
+    required    int32           result      =   1;// 1、发送成功  2、发送失败
+    required    int32           msg_id      =   2;// 消息ID,用于排序
+}
+
+message sc_chat_msg_notify{
+    required    int32           sender_id   =   1;
+    optional    int32           group_id    =   2;
+    required    int32           msg_id      =   3;// 消息ID,用于排序
+    required    int32           time        =   4;// 发送时间
+    required    p_msg           msg         =   5;
+}
