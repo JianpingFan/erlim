@@ -18,7 +18,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
     code_change/3]).
 
--export([write_data/2,get_table_data/1]).
+-compile(export_all).
 -define(SERVER, ?MODULE).
 
 -define(IS_HAVA_NEW_DATA,is_hava_new_data). %% [{table,Key}|...] 待写数据库表和key
@@ -66,6 +66,7 @@ init([]) ->
 handle_call(Request, _From, State = #cache_state{}) ->
     log4erl:warn("module ~w recive request ~w",[?MODULE,Request]),
     Data = ?CATCH(do_handle_call(Request)),
+    log4erl:info("do_handle_call Data ~w",[Data]),
     {reply, Data, State}.
 
 %% @private
@@ -96,7 +97,7 @@ do_handle_info(write_to_db)->
             lists:foreach(
                 fun({TableAtom,Key})->
                     case get_data_by_pri_key(TableAtom,Key) of
-                        RowData when length(RowData) > 0 ->
+                        RowData when is_tuple(RowData) ->
                             erlang:send(db,{write_db,TableAtom,Key,RowData});
                         Err->
                             log4erl:warn("write_to_db TableAtom ~w,Key = ~w,Err = ~w",[TableAtom,Key,Err]),
@@ -104,7 +105,8 @@ do_handle_info(write_to_db)->
                     end
                 end,
                 Data
-            )
+            ),
+            put(?IS_HAVA_NEW_DATA,[])
     end;
 do_handle_info({write_data,TableAtom,DataTup})->
     case lists:member(db:table_atom_name(TableAtom),?TABLE_LIST) of
@@ -113,11 +115,13 @@ do_handle_info({write_data,TableAtom,DataTup})->
             ok;
         true->
             AllData = get_table_data(db:table_atom_name(TableAtom)),
+            log4erl:info("write_data AllData = ~w",[AllData]),
             List = tuple_to_list(DataTup),
             [_,PrimaryKeyData|_] = List,
             NewAllData = lists:keystore(PrimaryKeyData,2,AllData,DataTup),
+            log4erl:info("write_data NewAllData = ~w",[NewAllData]),
             put_waite_to_db_key({TableAtom,PrimaryKeyData}),
-            put({?DATA_KEY,TableAtom},NewAllData)
+            put({?DATA_KEY,db:table_atom_name(TableAtom)},NewAllData)
     end;
 do_handle_info(get_cache)->
     erlang:send(db,{get_cache,?TABLE_LIST});
@@ -158,12 +162,18 @@ code_change(_OldVsn, State = #cache_state{}, _Extra) ->
 
 do_handle_call({fetch_data_by_field,TableAtom,Index,FieldData})->
     fetch_data_by_field(TableAtom,Index,FieldData);
+do_handle_call({?route,Module,Info})->
+    element(1,Info),
+    Module:handle_call(Info);
+%%do_handle_call({fetch_table_data,TableAtom})->
+%%    get_table_data(db:table_atom_name(TableAtom));
 do_handle_call(Request) ->
     log4erl:warn("module ~w undefined request ~w",[?MODULE,Request]),
     ok.
 
 get_data_by_pri_key(TableAtom,KeyData)->
     AllData = get_table_data(db:table_atom_name(TableAtom)),
+    log4erl:info("get_data_by_pri_key AllData = ~w",[AllData]),
     case lists:keyfind(KeyData,2,AllData) of
         Data when is_tuple(Data)->Data;
         _->[]
@@ -210,7 +220,8 @@ put_table_data(TableAtom,RowDataList)->
             ok
     end.
 
-put_table_data(TableAtom,PrimaryKey,[RowData|RowDataList],OldDataList)->
+put_table_data(TableAtom,PrimaryKey,[RowData1|RowDataList],OldDataList)->
+    RowData = format_field_data(TableAtom,RowData1),
     Tuple = list_to_tuple([list_to_atom(lists:concat(["field_",atom_to_list(TableAtom)])),primary_key_data(PrimaryKey,RowData,[])|RowData]),
     log4erl:info("put_table_data Tuple = ~w",[Tuple]),
     put_table_data(TableAtom,PrimaryKey,RowDataList,[Tuple|OldDataList]);
@@ -220,3 +231,20 @@ put_table_data(TableAtom,_PrimaryKey,[],OldDataList)->
 primary_key_data([Index|PrimaryKey],RowData,Acc)->
     primary_key_data(PrimaryKey,RowData,[lists:nth(Index,RowData)|Acc]);
 primary_key_data([],_RowData,Acc)->lists:reverse(Acc).
+
+
+format_field_data(TableAtom,RowData1)->
+    case lists:keyfind(TableAtom,#table_info.table_name,?TABLE_INFO_LIST) of
+        #table_info{primary_key = PrimaryKey,field_info = FieldInfo}->
+            format_field_data(FieldInfo,RowData1,1,[]);
+        _->
+            RowData1
+    end.
+
+format_field_data([],_RowData,_Index,Acc)->lists:reverse(Acc);
+format_field_data([{r_field,_,"int(11)",_,_,_,_}|FieldInfo],RowData,Index,Acc)->
+    format_field_data(FieldInfo,RowData,Index + 1,[binary_to_integer(lists:nth(Index,RowData))|Acc]);
+format_field_data([{r_field,_,"bigint(11)",_,_,_,_}|FieldInfo],RowData,Index,Acc)->
+    format_field_data(FieldInfo,RowData,Index + 1,[binary_to_integer(lists:nth(Index,RowData))|Acc]);
+format_field_data([{r_field,_,"varchar(255)",_,_,_,_}|FieldInfo],RowData,Index,Acc)->
+    format_field_data(FieldInfo,RowData,Index + 1,[binary_to_list(lists:nth(Index,RowData))|Acc]).

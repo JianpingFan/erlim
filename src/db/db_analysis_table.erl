@@ -66,7 +66,7 @@ weite_file()->
 
     lists:foreach(
         fun(TableAtom)->
-            io:format(S,"-define(table_~s,table_~s).~n",[string:to_lower(atom_to_list(TableAtom)),string:to_lower(atom_to_list(TableAtom))]),
+            io:format(S,"-define(table_~s,~s).~n",[string:to_lower(atom_to_list(TableAtom)),string:to_lower(atom_to_list(TableAtom))]),
             io:format(S,"-record(field_~s,{pri_key,",[string:to_lower(atom_to_list(TableAtom))]),
             FieldList = [Field||#r_field{field = Field}<-get({?TABLE_FIELD_ATOM_LIST,TableAtom})],
             Len = length(FieldList),

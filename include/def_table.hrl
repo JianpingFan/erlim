@@ -1,7 +1,7 @@
 -record(table_info,{table_name,primary_key,field_info}).
 
 -define(TABLE_LIST, [users]).
--define(table_users,table_users).
+-define(table_users,users).
 -record(field_users,{pri_key,user_id,mobile,pwd,nickname,create_time}).
 
 

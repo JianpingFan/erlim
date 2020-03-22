@@ -109,7 +109,7 @@ handle_info({write_db,TableAtom,Key,RowData}, State = #db_state{})->
   delete_data_by_primary_key(TableAtom,Key),
   List = tuple_to_list(RowData),
   [_,_|InsetData] = List,
-  delete_data_by_primary_key(TableAtom,InsetData),
+  insert_data_to_table(TableAtom,InsetData),
   {noreply, State};
 handle_info({get_cache,TaskList}, State = #db_state{})->
   get_cache(TaskList),
@@ -178,7 +178,7 @@ exec(Atom,ArgList)->
     {updated,_MysqlResult}->
       true;
     {error,Error}->
-      log4erl:info("execute Error = ~w",[Error]),
+      log4erl:info("execute Atom = ~w,ArgList = ~w,Error = ~w",[Atom,ArgList,Error]),
       false
   end.
 
@@ -191,8 +191,9 @@ prepare()->
   ).
 
 table_string_name(TableAtom) when is_atom(TableAtom)->
-  S = atom_to_list(TableAtom),
-  lists:sublist(S,7,length(S)).
+  atom_to_list(TableAtom).
+%%  S = atom_to_list(TableAtom),
+%%  lists:sublist(S,7,length(S)).
 table_atom_name(TableAtom) when is_atom(TableAtom)->
   list_to_atom(table_string_name(TableAtom)).
 

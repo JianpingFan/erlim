@@ -42,9 +42,9 @@ init([]) ->
         {cache, {cache, start_link, []},
             permanent, 2000, worker, []},
         {login, {login, start_link, []},
-            permanent, 2000, worker, []},
-        {chat_single, {chat_single, start_link, []},
             permanent, 2000, worker, []}
+%%        {chat, {chat, start_link, []},
+%%            permanent, 2000, worker, []}
     ],
     {ok, {{one_for_all, 0, 1}, Servers}}.
 
