@@ -35,18 +35,50 @@ init(Req, Opts) ->
       {ok, Req, Opts}
   end.
 
+%% 获取协议指定的模块名 如 cs_friend   return friend
+get_module_atom_name(Message)->
+  ModelAtom = element(1, Message),
+  ModelString = atom_to_list(ModelAtom),
+  ModelNameString = lists:sublist(ModelString,4,length(ModelString)),
+  log4erl:info("get_modle_atom_name ModelNameString = ~s",[ModelNameString]),
+  list_to_atom(ModelNameString).
+
+handle_message(UserID,Message)->
+  Module = get_module_atom_name(Message),
+  [_|List] = tuple_to_list(Message),
+  lists:foreach(
+    fun(Tup)->
+      Fun = element(1, Tup),
+      log4erl:info("handle_message Module = ~w",[Module]),
+      log4erl:info("handle_message Fun = ~w",[Fun]),
+      log4erl:info("handle_message Tup = ~w",[Tup]),
+      Module:Fun(UserID,Tup)
+    end,
+    List
+  ),
+  ok.
+
 websocket_init(State) ->
   {[], State}.
-
-websocket_handle({text, Info}, [#state{user_id = UserID}] = State) ->
-  erlang:send(cache,{client_msg, UserID,Info}),
+websocket_handle({binary, UpBin}, [#state{user_id = UserID}] = State) ->
+  log4erl:info("websocket recive UpBin = ~w",[UpBin]),
+  case im_pb:decode_msg(UpBin,up) of
+    UpTup when is_record(UpTup,up)->
+      log4erl:info("websocket recive Up = ~w",[UpTup]),
+      [_|UpList] = tuple_to_list(UpTup),
+      [handle_message(UserID,Message)||Message<-UpList];
+    _->
+      log4erl:error("decode_msg bin error UserID = ~w,UpBin = ~w",[UserID,UpBin])
+  end,
   {[], State};
-websocket_handle(_Data, State) ->
+websocket_handle(Data, State) ->
+  log4erl:info("websocket recive Data = ~w",[Data]),
   {[], State}.
 
 websocket_info({reply, Msg}, State) when is_binary(Msg)->
   {[{text, Msg}], State};
 websocket_info({reply, Msg}, State) when is_tuple(Msg)->
+  log4erl:info("reply Msg = ~w",[Msg]),
   {[{text, im_pb:encode_msg(Msg)}], State};
 
 websocket_info({timeout, _Ref, _Msg}, State) ->
@@ -69,6 +101,9 @@ update_user_ws_pid(TokenID, WsPID) when is_integer(TokenID) andalso is_pid(WsPID
 update_user_ws_pid(UserID, WsPID) ->
   log4erl:error("update_user_token UserID = ~w,WsPID = ~w", [UserID, WsPID]),
   false.
+
+
+
 
 get_user_ws_pid(TokenID) when is_list(TokenID)->
   get_user_ws_pid(list_to_integer(TokenID));

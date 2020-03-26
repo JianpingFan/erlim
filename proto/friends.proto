@@ -1,11 +1,21 @@
-package frends;
+//syntax = "proto3";
+//package frends;
 
-message cs_frends_all_friends{
+message cs_friend{
+    optional    cs_fetch_all_friends       fetch_all_friends = 1;
+}
+
+message sc_friend{
+    optional    sc_fetch_all_friends       fetch_all_friends = 1;
+}
+
+
+message cs_fetch_all_friends{
 
 }
 
-message sc_frends_all_friends{
-    repeated p_frend        all_frends = 1;
+message sc_fetch_all_friends{
+    repeated p_frend        frends = 1;
 }
 
 message p_frend{

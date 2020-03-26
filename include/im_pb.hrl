@@ -7,17 +7,45 @@
 
 -define(im_pb_gpb_version, "4.8.0").
 
--ifndef('CS_FRENDS_ALL_FRIENDS_PB_H').
--define('CS_FRENDS_ALL_FRIENDS_PB_H', true).
--record(cs_frends_all_friends,
+-ifndef('UP_PB_H').
+-define('UP_PB_H', true).
+-record(up,
+        {friend_fun             :: im_pb:cs_friend() | undefined % = 1
+        }).
+-endif.
+
+-ifndef('DOWN_PB_H').
+-define('DOWN_PB_H', true).
+-record(down,
+        {friend_fun             :: im_pb:sc_friend() | undefined % = 1
+        }).
+-endif.
+
+-ifndef('CS_FRIEND_PB_H').
+-define('CS_FRIEND_PB_H', true).
+-record(cs_friend,
+        {fetch_all_friends      :: im_pb:cs_fetch_all_friends() | undefined % = 1
+        }).
+-endif.
+
+-ifndef('SC_FRIEND_PB_H').
+-define('SC_FRIEND_PB_H', true).
+-record(sc_friend,
+        {fetch_all_friends      :: im_pb:sc_fetch_all_friends() | undefined % = 1
+        }).
+-endif.
+
+-ifndef('CS_FETCH_ALL_FRIENDS_PB_H').
+-define('CS_FETCH_ALL_FRIENDS_PB_H', true).
+-record(cs_fetch_all_friends,
         {
         }).
 -endif.
 
--ifndef('SC_FRENDS_ALL_FRIENDS_PB_H').
--define('SC_FRENDS_ALL_FRIENDS_PB_H', true).
--record(sc_frends_all_friends,
-        {all_frends = []        :: [im_pb:p_frend()] | undefined % = 1
+-ifndef('SC_FETCH_ALL_FRIENDS_PB_H').
+-define('SC_FETCH_ALL_FRIENDS_PB_H', true).
+-record(sc_fetch_all_friends,
+        {frends = []            :: [im_pb:p_frend()] | undefined % = 1
         }).
 -endif.
 
@@ -26,58 +54,6 @@
 -record(p_frend,
         {user_id                :: integer(),       % = 1, 32 bits
          nickname               :: iodata()         % = 2
-        }).
--endif.
-
--ifndef('P_MSG_PB_H').
--define('P_MSG_PB_H', true).
--record(p_msg,
-        {msg_type               :: integer(),       % = 1, 32 bits
-         text_msg               :: iodata() | undefined, % = 2
-         pic                    :: iodata() | undefined % = 3
-        }).
--endif.
-
--ifndef('CS_CHAT_SINGLE_PB_H').
--define('CS_CHAT_SINGLE_PB_H', true).
--record(cs_chat_single,
-        {receiver_id            :: integer(),       % = 1, 32 bits
-         msg                    :: im_pb:p_msg()    % = 2
-        }).
--endif.
-
--ifndef('SC_CHAT_SINGLE_PB_H').
--define('SC_CHAT_SINGLE_PB_H', true).
--record(sc_chat_single,
-        {result                 :: integer(),       % = 1, 32 bits
-         msg_id                 :: integer()        % = 2, 32 bits
-        }).
--endif.
-
--ifndef('CS_CHAT_GROUP_PB_H').
--define('CS_CHAT_GROUP_PB_H', true).
--record(cs_chat_group,
-        {group_id               :: integer(),       % = 1, 32 bits
-         msg                    :: im_pb:p_msg()    % = 2
-        }).
--endif.
-
--ifndef('SC_CHAT_GROUP_PB_H').
--define('SC_CHAT_GROUP_PB_H', true).
--record(sc_chat_group,
-        {result                 :: integer(),       % = 1, 32 bits
-         msg_id                 :: integer()        % = 2, 32 bits
-        }).
--endif.
-
--ifndef('SC_CHAT_MSG_NOTIFY_PB_H').
--define('SC_CHAT_MSG_NOTIFY_PB_H', true).
--record(sc_chat_msg_notify,
-        {sender_id              :: integer(),       % = 1, 32 bits
-         group_id               :: integer() | undefined, % = 2, 32 bits
-         msg_id                 :: integer(),       % = 3, 32 bits
-         time                   :: integer(),       % = 4, 32 bits
-         msg                    :: im_pb:p_msg()    % = 5
         }).
 -endif.
 

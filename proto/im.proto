@@ -1,2 +1,12 @@
+//syntax = "proto3";
 import "friends.proto";
 import "chat.proto";
+
+message up{
+    optional cs_friend      friend_fun = 1;
+}
+
+
+message down{
+    optional sc_friend      friend_fun = 1;
+}

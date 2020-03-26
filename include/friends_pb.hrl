@@ -7,17 +7,31 @@
 
 -define(friends_pb_gpb_version, "4.8.0").
 
--ifndef('CS_FRENDS_ALL_FRIENDS_PB_H').
--define('CS_FRENDS_ALL_FRIENDS_PB_H', true).
--record(cs_frends_all_friends,
+-ifndef('CS_FRIEND_PB_H').
+-define('CS_FRIEND_PB_H', true).
+-record(cs_friend,
+        {fetch_all_friends      :: friends_pb:cs_fetch_all_friends() | undefined % = 1
+        }).
+-endif.
+
+-ifndef('SC_FRIEND_PB_H').
+-define('SC_FRIEND_PB_H', true).
+-record(sc_friend,
+        {fetch_all_friends      :: friends_pb:sc_fetch_all_friends() | undefined % = 1
+        }).
+-endif.
+
+-ifndef('CS_FETCH_ALL_FRIENDS_PB_H').
+-define('CS_FETCH_ALL_FRIENDS_PB_H', true).
+-record(cs_fetch_all_friends,
         {
         }).
 -endif.
 
--ifndef('SC_FRENDS_ALL_FRIENDS_PB_H').
--define('SC_FRENDS_ALL_FRIENDS_PB_H', true).
--record(sc_frends_all_friends,
-        {all_frends = []        :: [friends_pb:p_frend()] | undefined % = 1
+-ifndef('SC_FETCH_ALL_FRIENDS_PB_H').
+-define('SC_FETCH_ALL_FRIENDS_PB_H', true).
+-record(sc_fetch_all_friends,
+        {frends = []            :: [friends_pb:p_frend()] | undefined % = 1
         }).
 -endif.
 

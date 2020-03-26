@@ -52,38 +52,34 @@
 -export_type([]).
 
 %% message types
--type cs_frends_all_friends() :: #cs_frends_all_friends{}.
+-type up() :: #up{}.
 
--type sc_frends_all_friends() :: #sc_frends_all_friends{}.
+-type down() :: #down{}.
+
+-type cs_friend() :: #cs_friend{}.
+
+-type sc_friend() :: #sc_friend{}.
+
+-type cs_fetch_all_friends() :: #cs_fetch_all_friends{}.
+
+-type sc_fetch_all_friends() :: #sc_fetch_all_friends{}.
 
 -type p_frend() :: #p_frend{}.
 
--type p_msg() :: #p_msg{}.
+-export_type(['up'/0, 'down'/0, 'cs_friend'/0, 'sc_friend'/0, 'cs_fetch_all_friends'/0, 'sc_fetch_all_friends'/0, 'p_frend'/0]).
 
--type cs_chat_single() :: #cs_chat_single{}.
-
--type sc_chat_single() :: #sc_chat_single{}.
-
--type cs_chat_group() :: #cs_chat_group{}.
-
--type sc_chat_group() :: #sc_chat_group{}.
-
--type sc_chat_msg_notify() :: #sc_chat_msg_notify{}.
-
--export_type(['cs_frends_all_friends'/0, 'sc_frends_all_friends'/0, 'p_frend'/0, 'p_msg'/0, 'cs_chat_single'/0, 'sc_chat_single'/0, 'cs_chat_group'/0, 'sc_chat_group'/0, 'sc_chat_msg_notify'/0]).
-
--spec encode_msg(#cs_frends_all_friends{} | #sc_frends_all_friends{} | #p_frend{} | #p_msg{} | #cs_chat_single{} | #sc_chat_single{} | #cs_chat_group{} | #sc_chat_group{} | #sc_chat_msg_notify{}) -> binary().
+-spec encode_msg(#up{} | #down{} | #cs_friend{} | #sc_friend{} | #cs_fetch_all_friends{} | #sc_fetch_all_friends{} | #p_frend{}) -> binary().
 encode_msg(Msg) when tuple_size(Msg) >= 1 ->
     encode_msg(Msg, element(1, Msg), []).
 
--spec encode_msg(#cs_frends_all_friends{} | #sc_frends_all_friends{} | #p_frend{} | #p_msg{} | #cs_chat_single{} | #sc_chat_single{} | #cs_chat_group{} | #sc_chat_group{} | #sc_chat_msg_notify{}, atom() | list()) -> binary().
+-spec encode_msg(#up{} | #down{} | #cs_friend{} | #sc_friend{} | #cs_fetch_all_friends{} | #sc_fetch_all_friends{} | #p_frend{}, atom() | list()) -> binary().
 encode_msg(Msg, MsgName) when is_atom(MsgName) ->
     encode_msg(Msg, MsgName, []);
 encode_msg(Msg, Opts)
     when tuple_size(Msg) >= 1, is_list(Opts) ->
     encode_msg(Msg, element(1, Msg), Opts).
 
--spec encode_msg(#cs_frends_all_friends{} | #sc_frends_all_friends{} | #p_frend{} | #p_msg{} | #cs_chat_single{} | #sc_chat_single{} | #cs_chat_group{} | #sc_chat_group{} | #sc_chat_msg_notify{}, atom(), list()) -> binary().
+-spec encode_msg(#up{} | #down{} | #cs_friend{} | #sc_friend{} | #cs_fetch_all_friends{} | #sc_fetch_all_friends{} | #p_frend{}, atom(), list()) -> binary().
 encode_msg(Msg, MsgName, Opts) ->
     case proplists:get_bool(verify, Opts) of
       true -> verify_msg(Msg, MsgName, Opts);
@@ -91,50 +87,101 @@ encode_msg(Msg, MsgName, Opts) ->
     end,
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
-      cs_frends_all_friends ->
-	  encode_msg_cs_frends_all_friends(id(Msg, TrUserData),
-					   TrUserData);
-      sc_frends_all_friends ->
-	  encode_msg_sc_frends_all_friends(id(Msg, TrUserData),
-					   TrUserData);
+      up -> encode_msg_up(id(Msg, TrUserData), TrUserData);
+      down ->
+	  encode_msg_down(id(Msg, TrUserData), TrUserData);
+      cs_friend ->
+	  encode_msg_cs_friend(id(Msg, TrUserData), TrUserData);
+      sc_friend ->
+	  encode_msg_sc_friend(id(Msg, TrUserData), TrUserData);
+      cs_fetch_all_friends ->
+	  encode_msg_cs_fetch_all_friends(id(Msg, TrUserData),
+					  TrUserData);
+      sc_fetch_all_friends ->
+	  encode_msg_sc_fetch_all_friends(id(Msg, TrUserData),
+					  TrUserData);
       p_frend ->
-	  encode_msg_p_frend(id(Msg, TrUserData), TrUserData);
-      p_msg ->
-	  encode_msg_p_msg(id(Msg, TrUserData), TrUserData);
-      cs_chat_single ->
-	  encode_msg_cs_chat_single(id(Msg, TrUserData),
-				    TrUserData);
-      sc_chat_single ->
-	  encode_msg_sc_chat_single(id(Msg, TrUserData),
-				    TrUserData);
-      cs_chat_group ->
-	  encode_msg_cs_chat_group(id(Msg, TrUserData),
-				   TrUserData);
-      sc_chat_group ->
-	  encode_msg_sc_chat_group(id(Msg, TrUserData),
-				   TrUserData);
-      sc_chat_msg_notify ->
-	  encode_msg_sc_chat_msg_notify(id(Msg, TrUserData),
-					TrUserData)
+	  encode_msg_p_frend(id(Msg, TrUserData), TrUserData)
     end.
 
 
-encode_msg_cs_frends_all_friends(_Msg, _TrUserData) ->
+encode_msg_up(Msg, TrUserData) ->
+    encode_msg_up(Msg, <<>>, TrUserData).
+
+
+encode_msg_up(#up{friend_fun = F1}, Bin, TrUserData) ->
+    if F1 == undefined -> Bin;
+       true ->
+	   begin
+	     TrF1 = id(F1, TrUserData),
+	     e_mfield_up_friend_fun(TrF1, <<Bin/binary, 10>>,
+				    TrUserData)
+	   end
+    end.
+
+encode_msg_down(Msg, TrUserData) ->
+    encode_msg_down(Msg, <<>>, TrUserData).
+
+
+encode_msg_down(#down{friend_fun = F1}, Bin,
+		TrUserData) ->
+    if F1 == undefined -> Bin;
+       true ->
+	   begin
+	     TrF1 = id(F1, TrUserData),
+	     e_mfield_down_friend_fun(TrF1, <<Bin/binary, 10>>,
+				      TrUserData)
+	   end
+    end.
+
+encode_msg_cs_friend(Msg, TrUserData) ->
+    encode_msg_cs_friend(Msg, <<>>, TrUserData).
+
+
+encode_msg_cs_friend(#cs_friend{fetch_all_friends = F1},
+		     Bin, TrUserData) ->
+    if F1 == undefined -> Bin;
+       true ->
+	   begin
+	     TrF1 = id(F1, TrUserData),
+	     e_mfield_cs_friend_fetch_all_friends(TrF1,
+						  <<Bin/binary, 10>>,
+						  TrUserData)
+	   end
+    end.
+
+encode_msg_sc_friend(Msg, TrUserData) ->
+    encode_msg_sc_friend(Msg, <<>>, TrUserData).
+
+
+encode_msg_sc_friend(#sc_friend{fetch_all_friends = F1},
+		     Bin, TrUserData) ->
+    if F1 == undefined -> Bin;
+       true ->
+	   begin
+	     TrF1 = id(F1, TrUserData),
+	     e_mfield_sc_friend_fetch_all_friends(TrF1,
+						  <<Bin/binary, 10>>,
+						  TrUserData)
+	   end
+    end.
+
+encode_msg_cs_fetch_all_friends(_Msg, _TrUserData) ->
     <<>>.
 
-encode_msg_sc_frends_all_friends(Msg, TrUserData) ->
-    encode_msg_sc_frends_all_friends(Msg, <<>>, TrUserData).
+encode_msg_sc_fetch_all_friends(Msg, TrUserData) ->
+    encode_msg_sc_fetch_all_friends(Msg, <<>>, TrUserData).
 
 
-encode_msg_sc_frends_all_friends(#sc_frends_all_friends{all_frends
-							    = F1},
-				 Bin, TrUserData) ->
+encode_msg_sc_fetch_all_friends(#sc_fetch_all_friends{frends
+							  = F1},
+				Bin, TrUserData) ->
     begin
       TrF1 = id(F1, TrUserData),
       if TrF1 == [] -> Bin;
 	 true ->
-	     e_field_sc_frends_all_friends_all_frends(TrF1, Bin,
-						      TrUserData)
+	     e_field_sc_fetch_all_friends_frends(TrF1, Bin,
+						 TrUserData)
       end
     end.
 
@@ -154,166 +201,44 @@ encode_msg_p_frend(#p_frend{user_id = F1,
       e_type_string(TrF2, <<B1/binary, 18>>, TrUserData)
     end.
 
-encode_msg_p_msg(Msg, TrUserData) ->
-    encode_msg_p_msg(Msg, <<>>, TrUserData).
+e_mfield_up_friend_fun(Msg, Bin, TrUserData) ->
+    SubBin = encode_msg_cs_friend(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
 
+e_mfield_down_friend_fun(Msg, Bin, TrUserData) ->
+    SubBin = encode_msg_sc_friend(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
 
-encode_msg_p_msg(#p_msg{msg_type = F1, text_msg = F2,
-			pic = F3},
-		 Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_int32(TrF1, <<Bin/binary, 8>>, TrUserData)
-	 end,
-    B2 = if F2 == undefined -> B1;
-	    true ->
-		begin
-		  TrF2 = id(F2, TrUserData),
-		  e_type_string(TrF2, <<B1/binary, 18>>, TrUserData)
-		end
-	 end,
-    if F3 == undefined -> B2;
-       true ->
-	   begin
-	     TrF3 = id(F3, TrUserData),
-	     e_type_bytes(TrF3, <<B2/binary, 26>>, TrUserData)
-	   end
-    end.
+e_mfield_cs_friend_fetch_all_friends(_Msg, Bin,
+				     _TrUserData) ->
+    <<Bin/binary, 0>>.
 
-encode_msg_cs_chat_single(Msg, TrUserData) ->
-    encode_msg_cs_chat_single(Msg, <<>>, TrUserData).
+e_mfield_sc_friend_fetch_all_friends(Msg, Bin,
+				     TrUserData) ->
+    SubBin = encode_msg_sc_fetch_all_friends(Msg, <<>>,
+					     TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
 
-
-encode_msg_cs_chat_single(#cs_chat_single{receiver_id =
-					      F1,
-					  msg = F2},
-			  Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_int32(TrF1, <<Bin/binary, 8>>, TrUserData)
-	 end,
-    begin
-      TrF2 = id(F2, TrUserData),
-      e_mfield_cs_chat_single_msg(TrF2, <<B1/binary, 18>>,
-				  TrUserData)
-    end.
-
-encode_msg_sc_chat_single(Msg, TrUserData) ->
-    encode_msg_sc_chat_single(Msg, <<>>, TrUserData).
-
-
-encode_msg_sc_chat_single(#sc_chat_single{result = F1,
-					  msg_id = F2},
-			  Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_int32(TrF1, <<Bin/binary, 8>>, TrUserData)
-	 end,
-    begin
-      TrF2 = id(F2, TrUserData),
-      e_type_int32(TrF2, <<B1/binary, 16>>, TrUserData)
-    end.
-
-encode_msg_cs_chat_group(Msg, TrUserData) ->
-    encode_msg_cs_chat_group(Msg, <<>>, TrUserData).
-
-
-encode_msg_cs_chat_group(#cs_chat_group{group_id = F1,
-					msg = F2},
-			 Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_int32(TrF1, <<Bin/binary, 8>>, TrUserData)
-	 end,
-    begin
-      TrF2 = id(F2, TrUserData),
-      e_mfield_cs_chat_group_msg(TrF2, <<B1/binary, 18>>,
-				 TrUserData)
-    end.
-
-encode_msg_sc_chat_group(Msg, TrUserData) ->
-    encode_msg_sc_chat_group(Msg, <<>>, TrUserData).
-
-
-encode_msg_sc_chat_group(#sc_chat_group{result = F1,
-					msg_id = F2},
-			 Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_int32(TrF1, <<Bin/binary, 8>>, TrUserData)
-	 end,
-    begin
-      TrF2 = id(F2, TrUserData),
-      e_type_int32(TrF2, <<B1/binary, 16>>, TrUserData)
-    end.
-
-encode_msg_sc_chat_msg_notify(Msg, TrUserData) ->
-    encode_msg_sc_chat_msg_notify(Msg, <<>>, TrUserData).
-
-
-encode_msg_sc_chat_msg_notify(#sc_chat_msg_notify{sender_id
-						      = F1,
-						  group_id = F2, msg_id = F3,
-						  time = F4, msg = F5},
-			      Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_int32(TrF1, <<Bin/binary, 8>>, TrUserData)
-	 end,
-    B2 = if F2 == undefined -> B1;
-	    true ->
-		begin
-		  TrF2 = id(F2, TrUserData),
-		  e_type_int32(TrF2, <<B1/binary, 16>>, TrUserData)
-		end
-	 end,
-    B3 = begin
-	   TrF3 = id(F3, TrUserData),
-	   e_type_int32(TrF3, <<B2/binary, 24>>, TrUserData)
-	 end,
-    B4 = begin
-	   TrF4 = id(F4, TrUserData),
-	   e_type_int32(TrF4, <<B3/binary, 32>>, TrUserData)
-	 end,
-    begin
-      TrF5 = id(F5, TrUserData),
-      e_mfield_sc_chat_msg_notify_msg(TrF5, <<B4/binary, 42>>,
-				      TrUserData)
-    end.
-
-e_mfield_sc_frends_all_friends_all_frends(Msg, Bin,
-					  TrUserData) ->
+e_mfield_sc_fetch_all_friends_frends(Msg, Bin,
+				     TrUserData) ->
     SubBin = encode_msg_p_frend(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
-e_field_sc_frends_all_friends_all_frends([Elem | Rest],
-					 Bin, TrUserData) ->
+e_field_sc_fetch_all_friends_frends([Elem | Rest], Bin,
+				    TrUserData) ->
     Bin2 = <<Bin/binary, 10>>,
-    Bin3 =
-	e_mfield_sc_frends_all_friends_all_frends(id(Elem,
-						     TrUserData),
-						  Bin2, TrUserData),
-    e_field_sc_frends_all_friends_all_frends(Rest, Bin3,
-					     TrUserData);
-e_field_sc_frends_all_friends_all_frends([], Bin,
-					 _TrUserData) ->
+    Bin3 = e_mfield_sc_fetch_all_friends_frends(id(Elem,
+						   TrUserData),
+						Bin2, TrUserData),
+    e_field_sc_fetch_all_friends_frends(Rest, Bin3,
+					TrUserData);
+e_field_sc_fetch_all_friends_frends([], Bin,
+				    _TrUserData) ->
     Bin.
-
-e_mfield_cs_chat_single_msg(Msg, Bin, TrUserData) ->
-    SubBin = encode_msg_p_msg(Msg, <<>>, TrUserData),
-    Bin2 = e_varint(byte_size(SubBin), Bin),
-    <<Bin2/binary, SubBin/binary>>.
-
-e_mfield_cs_chat_group_msg(Msg, Bin, TrUserData) ->
-    SubBin = encode_msg_p_msg(Msg, <<>>, TrUserData),
-    Bin2 = e_varint(byte_size(SubBin), Bin),
-    <<Bin2/binary, SubBin/binary>>.
-
-e_mfield_sc_chat_msg_notify_msg(Msg, Bin, TrUserData) ->
-    SubBin = encode_msg_p_msg(Msg, <<>>, TrUserData),
-    Bin2 = e_varint(byte_size(SubBin), Bin),
-    <<Bin2/binary, SubBin/binary>>.
 
 -compile({nowarn_unused_function,e_type_sint/3}).
 e_type_sint(Value, Bin, _TrUserData) when Value >= 0 ->
@@ -429,235 +354,616 @@ decode_msg_1_catch(Bin, MsgName, TrUserData) ->
     end.
 -endif.
 
-decode_msg_2_doit(cs_frends_all_friends, Bin,
+decode_msg_2_doit(up, Bin, TrUserData) ->
+    id(decode_msg_up(Bin, TrUserData), TrUserData);
+decode_msg_2_doit(down, Bin, TrUserData) ->
+    id(decode_msg_down(Bin, TrUserData), TrUserData);
+decode_msg_2_doit(cs_friend, Bin, TrUserData) ->
+    id(decode_msg_cs_friend(Bin, TrUserData), TrUserData);
+decode_msg_2_doit(sc_friend, Bin, TrUserData) ->
+    id(decode_msg_sc_friend(Bin, TrUserData), TrUserData);
+decode_msg_2_doit(cs_fetch_all_friends, Bin,
 		  TrUserData) ->
-    id(decode_msg_cs_frends_all_friends(Bin, TrUserData),
+    id(decode_msg_cs_fetch_all_friends(Bin, TrUserData),
        TrUserData);
-decode_msg_2_doit(sc_frends_all_friends, Bin,
+decode_msg_2_doit(sc_fetch_all_friends, Bin,
 		  TrUserData) ->
-    id(decode_msg_sc_frends_all_friends(Bin, TrUserData),
+    id(decode_msg_sc_fetch_all_friends(Bin, TrUserData),
        TrUserData);
 decode_msg_2_doit(p_frend, Bin, TrUserData) ->
-    id(decode_msg_p_frend(Bin, TrUserData), TrUserData);
-decode_msg_2_doit(p_msg, Bin, TrUserData) ->
-    id(decode_msg_p_msg(Bin, TrUserData), TrUserData);
-decode_msg_2_doit(cs_chat_single, Bin, TrUserData) ->
-    id(decode_msg_cs_chat_single(Bin, TrUserData),
-       TrUserData);
-decode_msg_2_doit(sc_chat_single, Bin, TrUserData) ->
-    id(decode_msg_sc_chat_single(Bin, TrUserData),
-       TrUserData);
-decode_msg_2_doit(cs_chat_group, Bin, TrUserData) ->
-    id(decode_msg_cs_chat_group(Bin, TrUserData),
-       TrUserData);
-decode_msg_2_doit(sc_chat_group, Bin, TrUserData) ->
-    id(decode_msg_sc_chat_group(Bin, TrUserData),
-       TrUserData);
-decode_msg_2_doit(sc_chat_msg_notify, Bin,
-		  TrUserData) ->
-    id(decode_msg_sc_chat_msg_notify(Bin, TrUserData),
-       TrUserData).
+    id(decode_msg_p_frend(Bin, TrUserData), TrUserData).
 
 
 
-decode_msg_cs_frends_all_friends(Bin, TrUserData) ->
-    dfp_read_field_def_cs_frends_all_friends(Bin, 0, 0,
-					     TrUserData).
+decode_msg_up(Bin, TrUserData) ->
+    dfp_read_field_def_up(Bin, 0, 0,
+			  id(undefined, TrUserData), TrUserData).
 
-dfp_read_field_def_cs_frends_all_friends(<<>>, 0, 0,
-					 _) ->
-    #cs_frends_all_friends{};
-dfp_read_field_def_cs_frends_all_friends(Other, Z1, Z2,
-					 TrUserData) ->
-    dg_read_field_def_cs_frends_all_friends(Other, Z1, Z2,
-					    TrUserData).
+dfp_read_field_def_up(<<10, Rest/binary>>, Z1, Z2, F@_1,
+		      TrUserData) ->
+    d_field_up_friend_fun(Rest, Z1, Z2, F@_1, TrUserData);
+dfp_read_field_def_up(<<>>, 0, 0, F@_1, _) ->
+    #up{friend_fun = F@_1};
+dfp_read_field_def_up(Other, Z1, Z2, F@_1,
+		      TrUserData) ->
+    dg_read_field_def_up(Other, Z1, Z2, F@_1, TrUserData).
 
-dg_read_field_def_cs_frends_all_friends(<<1:1, X:7,
-					  Rest/binary>>,
-					N, Acc, TrUserData)
+dg_read_field_def_up(<<1:1, X:7, Rest/binary>>, N, Acc,
+		     F@_1, TrUserData)
     when N < 32 - 7 ->
-    dg_read_field_def_cs_frends_all_friends(Rest, N + 7,
-					    X bsl N + Acc, TrUserData);
-dg_read_field_def_cs_frends_all_friends(<<0:1, X:7,
-					  Rest/binary>>,
-					N, Acc, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key band 7 of
-      0 ->
-	  skip_varint_cs_frends_all_friends(Rest, 0, 0,
-					    TrUserData);
-      1 ->
-	  skip_64_cs_frends_all_friends(Rest, 0, 0, TrUserData);
-      2 ->
-	  skip_length_delimited_cs_frends_all_friends(Rest, 0, 0,
-						      TrUserData);
-      3 ->
-	  skip_group_cs_frends_all_friends(Rest, Key bsr 3, 0,
-					   TrUserData);
-      5 ->
-	  skip_32_cs_frends_all_friends(Rest, 0, 0, TrUserData)
-    end;
-dg_read_field_def_cs_frends_all_friends(<<>>, 0, 0,
-					_) ->
-    #cs_frends_all_friends{}.
-
-skip_varint_cs_frends_all_friends(<<1:1, _:7,
-				    Rest/binary>>,
-				  Z1, Z2, TrUserData) ->
-    skip_varint_cs_frends_all_friends(Rest, Z1, Z2,
-				      TrUserData);
-skip_varint_cs_frends_all_friends(<<0:1, _:7,
-				    Rest/binary>>,
-				  Z1, Z2, TrUserData) ->
-    dfp_read_field_def_cs_frends_all_friends(Rest, Z1, Z2,
-					     TrUserData).
-
-skip_length_delimited_cs_frends_all_friends(<<1:1, X:7,
-					      Rest/binary>>,
-					    N, Acc, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_cs_frends_all_friends(Rest, N + 7,
-						X bsl N + Acc, TrUserData);
-skip_length_delimited_cs_frends_all_friends(<<0:1, X:7,
-					      Rest/binary>>,
-					    N, Acc, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_cs_frends_all_friends(Rest2, 0, 0,
-					     TrUserData).
-
-skip_group_cs_frends_all_friends(Bin, FNum, Z2,
-				 TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_cs_frends_all_friends(Rest, 0, Z2,
-					     TrUserData).
-
-skip_32_cs_frends_all_friends(<<_:32, Rest/binary>>, Z1,
-			      Z2, TrUserData) ->
-    dfp_read_field_def_cs_frends_all_friends(Rest, Z1, Z2,
-					     TrUserData).
-
-skip_64_cs_frends_all_friends(<<_:64, Rest/binary>>, Z1,
-			      Z2, TrUserData) ->
-    dfp_read_field_def_cs_frends_all_friends(Rest, Z1, Z2,
-					     TrUserData).
-
-decode_msg_sc_frends_all_friends(Bin, TrUserData) ->
-    dfp_read_field_def_sc_frends_all_friends(Bin, 0, 0,
-					     id([], TrUserData), TrUserData).
-
-dfp_read_field_def_sc_frends_all_friends(<<10,
-					   Rest/binary>>,
-					 Z1, Z2, F@_1, TrUserData) ->
-    d_field_sc_frends_all_friends_all_frends(Rest, Z1, Z2,
-					     F@_1, TrUserData);
-dfp_read_field_def_sc_frends_all_friends(<<>>, 0, 0, R1,
-					 TrUserData) ->
-    #sc_frends_all_friends{all_frends =
-			       lists_reverse(R1, TrUserData)};
-dfp_read_field_def_sc_frends_all_friends(Other, Z1, Z2,
-					 F@_1, TrUserData) ->
-    dg_read_field_def_sc_frends_all_friends(Other, Z1, Z2,
-					    F@_1, TrUserData).
-
-dg_read_field_def_sc_frends_all_friends(<<1:1, X:7,
-					  Rest/binary>>,
-					N, Acc, F@_1, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_sc_frends_all_friends(Rest, N + 7,
-					    X bsl N + Acc, F@_1, TrUserData);
-dg_read_field_def_sc_frends_all_friends(<<0:1, X:7,
-					  Rest/binary>>,
-					N, Acc, F@_1, TrUserData) ->
+    dg_read_field_def_up(Rest, N + 7, X bsl N + Acc, F@_1,
+			 TrUserData);
+dg_read_field_def_up(<<0:1, X:7, Rest/binary>>, N, Acc,
+		     F@_1, TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
       10 ->
-	  d_field_sc_frends_all_friends_all_frends(Rest, 0, 0,
-						   F@_1, TrUserData);
+	  d_field_up_friend_fun(Rest, 0, 0, F@_1, TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 -> skip_varint_up(Rest, 0, 0, F@_1, TrUserData);
+	    1 -> skip_64_up(Rest, 0, 0, F@_1, TrUserData);
+	    2 ->
+		skip_length_delimited_up(Rest, 0, 0, F@_1, TrUserData);
+	    3 ->
+		skip_group_up(Rest, Key bsr 3, 0, F@_1, TrUserData);
+	    5 -> skip_32_up(Rest, 0, 0, F@_1, TrUserData)
+	  end
+    end;
+dg_read_field_def_up(<<>>, 0, 0, F@_1, _) ->
+    #up{friend_fun = F@_1}.
+
+d_field_up_friend_fun(<<1:1, X:7, Rest/binary>>, N, Acc,
+		      F@_1, TrUserData)
+    when N < 57 ->
+    d_field_up_friend_fun(Rest, N + 7, X bsl N + Acc, F@_1,
+			  TrUserData);
+d_field_up_friend_fun(<<0:1, X:7, Rest/binary>>, N, Acc,
+		      Prev, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bs:Len/binary, Rest2/binary>> = Rest,
+			   {id(decode_msg_cs_friend(Bs, TrUserData),
+			       TrUserData),
+			    Rest2}
+			 end,
+    dfp_read_field_def_up(RestF, 0, 0,
+			  if Prev == undefined -> NewFValue;
+			     true ->
+				 merge_msg_cs_friend(Prev, NewFValue,
+						     TrUserData)
+			  end,
+			  TrUserData).
+
+skip_varint_up(<<1:1, _:7, Rest/binary>>, Z1, Z2, F@_1,
+	       TrUserData) ->
+    skip_varint_up(Rest, Z1, Z2, F@_1, TrUserData);
+skip_varint_up(<<0:1, _:7, Rest/binary>>, Z1, Z2, F@_1,
+	       TrUserData) ->
+    dfp_read_field_def_up(Rest, Z1, Z2, F@_1, TrUserData).
+
+skip_length_delimited_up(<<1:1, X:7, Rest/binary>>, N,
+			 Acc, F@_1, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_up(Rest, N + 7, X bsl N + Acc,
+			     F@_1, TrUserData);
+skip_length_delimited_up(<<0:1, X:7, Rest/binary>>, N,
+			 Acc, F@_1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_up(Rest2, 0, 0, F@_1, TrUserData).
+
+skip_group_up(Bin, FNum, Z2, F@_1, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_up(Rest, 0, Z2, F@_1, TrUserData).
+
+skip_32_up(<<_:32, Rest/binary>>, Z1, Z2, F@_1,
+	   TrUserData) ->
+    dfp_read_field_def_up(Rest, Z1, Z2, F@_1, TrUserData).
+
+skip_64_up(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
+	   TrUserData) ->
+    dfp_read_field_def_up(Rest, Z1, Z2, F@_1, TrUserData).
+
+decode_msg_down(Bin, TrUserData) ->
+    dfp_read_field_def_down(Bin, 0, 0,
+			    id(undefined, TrUserData), TrUserData).
+
+dfp_read_field_def_down(<<10, Rest/binary>>, Z1, Z2,
+			F@_1, TrUserData) ->
+    d_field_down_friend_fun(Rest, Z1, Z2, F@_1, TrUserData);
+dfp_read_field_def_down(<<>>, 0, 0, F@_1, _) ->
+    #down{friend_fun = F@_1};
+dfp_read_field_def_down(Other, Z1, Z2, F@_1,
+			TrUserData) ->
+    dg_read_field_def_down(Other, Z1, Z2, F@_1, TrUserData).
+
+dg_read_field_def_down(<<1:1, X:7, Rest/binary>>, N,
+		       Acc, F@_1, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_down(Rest, N + 7, X bsl N + Acc, F@_1,
+			   TrUserData);
+dg_read_field_def_down(<<0:1, X:7, Rest/binary>>, N,
+		       Acc, F@_1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 ->
+	  d_field_down_friend_fun(Rest, 0, 0, F@_1, TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 -> skip_varint_down(Rest, 0, 0, F@_1, TrUserData);
+	    1 -> skip_64_down(Rest, 0, 0, F@_1, TrUserData);
+	    2 ->
+		skip_length_delimited_down(Rest, 0, 0, F@_1,
+					   TrUserData);
+	    3 ->
+		skip_group_down(Rest, Key bsr 3, 0, F@_1, TrUserData);
+	    5 -> skip_32_down(Rest, 0, 0, F@_1, TrUserData)
+	  end
+    end;
+dg_read_field_def_down(<<>>, 0, 0, F@_1, _) ->
+    #down{friend_fun = F@_1}.
+
+d_field_down_friend_fun(<<1:1, X:7, Rest/binary>>, N,
+			Acc, F@_1, TrUserData)
+    when N < 57 ->
+    d_field_down_friend_fun(Rest, N + 7, X bsl N + Acc,
+			    F@_1, TrUserData);
+d_field_down_friend_fun(<<0:1, X:7, Rest/binary>>, N,
+			Acc, Prev, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bs:Len/binary, Rest2/binary>> = Rest,
+			   {id(decode_msg_sc_friend(Bs, TrUserData),
+			       TrUserData),
+			    Rest2}
+			 end,
+    dfp_read_field_def_down(RestF, 0, 0,
+			    if Prev == undefined -> NewFValue;
+			       true ->
+				   merge_msg_sc_friend(Prev, NewFValue,
+						       TrUserData)
+			    end,
+			    TrUserData).
+
+skip_varint_down(<<1:1, _:7, Rest/binary>>, Z1, Z2,
+		 F@_1, TrUserData) ->
+    skip_varint_down(Rest, Z1, Z2, F@_1, TrUserData);
+skip_varint_down(<<0:1, _:7, Rest/binary>>, Z1, Z2,
+		 F@_1, TrUserData) ->
+    dfp_read_field_def_down(Rest, Z1, Z2, F@_1, TrUserData).
+
+skip_length_delimited_down(<<1:1, X:7, Rest/binary>>, N,
+			   Acc, F@_1, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_down(Rest, N + 7, X bsl N + Acc,
+			       F@_1, TrUserData);
+skip_length_delimited_down(<<0:1, X:7, Rest/binary>>, N,
+			   Acc, F@_1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_down(Rest2, 0, 0, F@_1, TrUserData).
+
+skip_group_down(Bin, FNum, Z2, F@_1, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_down(Rest, 0, Z2, F@_1, TrUserData).
+
+skip_32_down(<<_:32, Rest/binary>>, Z1, Z2, F@_1,
+	     TrUserData) ->
+    dfp_read_field_def_down(Rest, Z1, Z2, F@_1, TrUserData).
+
+skip_64_down(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
+	     TrUserData) ->
+    dfp_read_field_def_down(Rest, Z1, Z2, F@_1, TrUserData).
+
+decode_msg_cs_friend(Bin, TrUserData) ->
+    dfp_read_field_def_cs_friend(Bin, 0, 0,
+				 id(undefined, TrUserData), TrUserData).
+
+dfp_read_field_def_cs_friend(<<10, Rest/binary>>, Z1,
+			     Z2, F@_1, TrUserData) ->
+    d_field_cs_friend_fetch_all_friends(Rest, Z1, Z2, F@_1,
+					TrUserData);
+dfp_read_field_def_cs_friend(<<>>, 0, 0, F@_1, _) ->
+    #cs_friend{fetch_all_friends = F@_1};
+dfp_read_field_def_cs_friend(Other, Z1, Z2, F@_1,
+			     TrUserData) ->
+    dg_read_field_def_cs_friend(Other, Z1, Z2, F@_1,
+				TrUserData).
+
+dg_read_field_def_cs_friend(<<1:1, X:7, Rest/binary>>,
+			    N, Acc, F@_1, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_cs_friend(Rest, N + 7, X bsl N + Acc,
+				F@_1, TrUserData);
+dg_read_field_def_cs_friend(<<0:1, X:7, Rest/binary>>,
+			    N, Acc, F@_1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 ->
+	  d_field_cs_friend_fetch_all_friends(Rest, 0, 0, F@_1,
+					      TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 ->
-		skip_varint_sc_frends_all_friends(Rest, 0, 0, F@_1,
-						  TrUserData);
-	    1 ->
-		skip_64_sc_frends_all_friends(Rest, 0, 0, F@_1,
-					      TrUserData);
+		skip_varint_cs_friend(Rest, 0, 0, F@_1, TrUserData);
+	    1 -> skip_64_cs_friend(Rest, 0, 0, F@_1, TrUserData);
 	    2 ->
-		skip_length_delimited_sc_frends_all_friends(Rest, 0, 0,
-							    F@_1, TrUserData);
+		skip_length_delimited_cs_friend(Rest, 0, 0, F@_1,
+						TrUserData);
 	    3 ->
-		skip_group_sc_frends_all_friends(Rest, Key bsr 3, 0,
-						 F@_1, TrUserData);
-	    5 ->
-		skip_32_sc_frends_all_friends(Rest, 0, 0, F@_1,
-					      TrUserData)
+		skip_group_cs_friend(Rest, Key bsr 3, 0, F@_1,
+				     TrUserData);
+	    5 -> skip_32_cs_friend(Rest, 0, 0, F@_1, TrUserData)
 	  end
     end;
-dg_read_field_def_sc_frends_all_friends(<<>>, 0, 0, R1,
-					TrUserData) ->
-    #sc_frends_all_friends{all_frends =
-			       lists_reverse(R1, TrUserData)}.
+dg_read_field_def_cs_friend(<<>>, 0, 0, F@_1, _) ->
+    #cs_friend{fetch_all_friends = F@_1}.
 
-d_field_sc_frends_all_friends_all_frends(<<1:1, X:7,
-					   Rest/binary>>,
-					 N, Acc, F@_1, TrUserData)
+d_field_cs_friend_fetch_all_friends(<<1:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, F@_1, TrUserData)
     when N < 57 ->
-    d_field_sc_frends_all_friends_all_frends(Rest, N + 7,
-					     X bsl N + Acc, F@_1, TrUserData);
-d_field_sc_frends_all_friends_all_frends(<<0:1, X:7,
-					   Rest/binary>>,
-					 N, Acc, Prev, TrUserData) ->
+    d_field_cs_friend_fetch_all_friends(Rest, N + 7,
+					X bsl N + Acc, F@_1, TrUserData);
+d_field_cs_friend_fetch_all_friends(<<0:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, Prev, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bs:Len/binary, Rest2/binary>> = Rest,
+			   {id(decode_msg_cs_fetch_all_friends(Bs, TrUserData),
+			       TrUserData),
+			    Rest2}
+			 end,
+    dfp_read_field_def_cs_friend(RestF, 0, 0,
+				 if Prev == undefined -> NewFValue;
+				    true ->
+					merge_msg_cs_fetch_all_friends(Prev,
+								       NewFValue,
+								       TrUserData)
+				 end,
+				 TrUserData).
+
+skip_varint_cs_friend(<<1:1, _:7, Rest/binary>>, Z1, Z2,
+		      F@_1, TrUserData) ->
+    skip_varint_cs_friend(Rest, Z1, Z2, F@_1, TrUserData);
+skip_varint_cs_friend(<<0:1, _:7, Rest/binary>>, Z1, Z2,
+		      F@_1, TrUserData) ->
+    dfp_read_field_def_cs_friend(Rest, Z1, Z2, F@_1,
+				 TrUserData).
+
+skip_length_delimited_cs_friend(<<1:1, X:7,
+				  Rest/binary>>,
+				N, Acc, F@_1, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_cs_friend(Rest, N + 7,
+				    X bsl N + Acc, F@_1, TrUserData);
+skip_length_delimited_cs_friend(<<0:1, X:7,
+				  Rest/binary>>,
+				N, Acc, F@_1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_cs_friend(Rest2, 0, 0, F@_1,
+				 TrUserData).
+
+skip_group_cs_friend(Bin, FNum, Z2, F@_1, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_cs_friend(Rest, 0, Z2, F@_1,
+				 TrUserData).
+
+skip_32_cs_friend(<<_:32, Rest/binary>>, Z1, Z2, F@_1,
+		  TrUserData) ->
+    dfp_read_field_def_cs_friend(Rest, Z1, Z2, F@_1,
+				 TrUserData).
+
+skip_64_cs_friend(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
+		  TrUserData) ->
+    dfp_read_field_def_cs_friend(Rest, Z1, Z2, F@_1,
+				 TrUserData).
+
+decode_msg_sc_friend(Bin, TrUserData) ->
+    dfp_read_field_def_sc_friend(Bin, 0, 0,
+				 id(undefined, TrUserData), TrUserData).
+
+dfp_read_field_def_sc_friend(<<10, Rest/binary>>, Z1,
+			     Z2, F@_1, TrUserData) ->
+    d_field_sc_friend_fetch_all_friends(Rest, Z1, Z2, F@_1,
+					TrUserData);
+dfp_read_field_def_sc_friend(<<>>, 0, 0, F@_1, _) ->
+    #sc_friend{fetch_all_friends = F@_1};
+dfp_read_field_def_sc_friend(Other, Z1, Z2, F@_1,
+			     TrUserData) ->
+    dg_read_field_def_sc_friend(Other, Z1, Z2, F@_1,
+				TrUserData).
+
+dg_read_field_def_sc_friend(<<1:1, X:7, Rest/binary>>,
+			    N, Acc, F@_1, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_sc_friend(Rest, N + 7, X bsl N + Acc,
+				F@_1, TrUserData);
+dg_read_field_def_sc_friend(<<0:1, X:7, Rest/binary>>,
+			    N, Acc, F@_1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 ->
+	  d_field_sc_friend_fetch_all_friends(Rest, 0, 0, F@_1,
+					      TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 ->
+		skip_varint_sc_friend(Rest, 0, 0, F@_1, TrUserData);
+	    1 -> skip_64_sc_friend(Rest, 0, 0, F@_1, TrUserData);
+	    2 ->
+		skip_length_delimited_sc_friend(Rest, 0, 0, F@_1,
+						TrUserData);
+	    3 ->
+		skip_group_sc_friend(Rest, Key bsr 3, 0, F@_1,
+				     TrUserData);
+	    5 -> skip_32_sc_friend(Rest, 0, 0, F@_1, TrUserData)
+	  end
+    end;
+dg_read_field_def_sc_friend(<<>>, 0, 0, F@_1, _) ->
+    #sc_friend{fetch_all_friends = F@_1}.
+
+d_field_sc_friend_fetch_all_friends(<<1:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, F@_1, TrUserData)
+    when N < 57 ->
+    d_field_sc_friend_fetch_all_friends(Rest, N + 7,
+					X bsl N + Acc, F@_1, TrUserData);
+d_field_sc_friend_fetch_all_friends(<<0:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, Prev, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bs:Len/binary, Rest2/binary>> = Rest,
+			   {id(decode_msg_sc_fetch_all_friends(Bs, TrUserData),
+			       TrUserData),
+			    Rest2}
+			 end,
+    dfp_read_field_def_sc_friend(RestF, 0, 0,
+				 if Prev == undefined -> NewFValue;
+				    true ->
+					merge_msg_sc_fetch_all_friends(Prev,
+								       NewFValue,
+								       TrUserData)
+				 end,
+				 TrUserData).
+
+skip_varint_sc_friend(<<1:1, _:7, Rest/binary>>, Z1, Z2,
+		      F@_1, TrUserData) ->
+    skip_varint_sc_friend(Rest, Z1, Z2, F@_1, TrUserData);
+skip_varint_sc_friend(<<0:1, _:7, Rest/binary>>, Z1, Z2,
+		      F@_1, TrUserData) ->
+    dfp_read_field_def_sc_friend(Rest, Z1, Z2, F@_1,
+				 TrUserData).
+
+skip_length_delimited_sc_friend(<<1:1, X:7,
+				  Rest/binary>>,
+				N, Acc, F@_1, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_sc_friend(Rest, N + 7,
+				    X bsl N + Acc, F@_1, TrUserData);
+skip_length_delimited_sc_friend(<<0:1, X:7,
+				  Rest/binary>>,
+				N, Acc, F@_1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_sc_friend(Rest2, 0, 0, F@_1,
+				 TrUserData).
+
+skip_group_sc_friend(Bin, FNum, Z2, F@_1, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_sc_friend(Rest, 0, Z2, F@_1,
+				 TrUserData).
+
+skip_32_sc_friend(<<_:32, Rest/binary>>, Z1, Z2, F@_1,
+		  TrUserData) ->
+    dfp_read_field_def_sc_friend(Rest, Z1, Z2, F@_1,
+				 TrUserData).
+
+skip_64_sc_friend(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
+		  TrUserData) ->
+    dfp_read_field_def_sc_friend(Rest, Z1, Z2, F@_1,
+				 TrUserData).
+
+decode_msg_cs_fetch_all_friends(Bin, TrUserData) ->
+    dfp_read_field_def_cs_fetch_all_friends(Bin, 0, 0,
+					    TrUserData).
+
+dfp_read_field_def_cs_fetch_all_friends(<<>>, 0, 0,
+					_) ->
+    #cs_fetch_all_friends{};
+dfp_read_field_def_cs_fetch_all_friends(Other, Z1, Z2,
+					TrUserData) ->
+    dg_read_field_def_cs_fetch_all_friends(Other, Z1, Z2,
+					   TrUserData).
+
+dg_read_field_def_cs_fetch_all_friends(<<1:1, X:7,
+					 Rest/binary>>,
+				       N, Acc, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_cs_fetch_all_friends(Rest, N + 7,
+					   X bsl N + Acc, TrUserData);
+dg_read_field_def_cs_fetch_all_friends(<<0:1, X:7,
+					 Rest/binary>>,
+				       N, Acc, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key band 7 of
+      0 ->
+	  skip_varint_cs_fetch_all_friends(Rest, 0, 0,
+					   TrUserData);
+      1 ->
+	  skip_64_cs_fetch_all_friends(Rest, 0, 0, TrUserData);
+      2 ->
+	  skip_length_delimited_cs_fetch_all_friends(Rest, 0, 0,
+						     TrUserData);
+      3 ->
+	  skip_group_cs_fetch_all_friends(Rest, Key bsr 3, 0,
+					  TrUserData);
+      5 ->
+	  skip_32_cs_fetch_all_friends(Rest, 0, 0, TrUserData)
+    end;
+dg_read_field_def_cs_fetch_all_friends(<<>>, 0, 0, _) ->
+    #cs_fetch_all_friends{}.
+
+skip_varint_cs_fetch_all_friends(<<1:1, _:7,
+				   Rest/binary>>,
+				 Z1, Z2, TrUserData) ->
+    skip_varint_cs_fetch_all_friends(Rest, Z1, Z2,
+				     TrUserData);
+skip_varint_cs_fetch_all_friends(<<0:1, _:7,
+				   Rest/binary>>,
+				 Z1, Z2, TrUserData) ->
+    dfp_read_field_def_cs_fetch_all_friends(Rest, Z1, Z2,
+					    TrUserData).
+
+skip_length_delimited_cs_fetch_all_friends(<<1:1, X:7,
+					     Rest/binary>>,
+					   N, Acc, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_cs_fetch_all_friends(Rest, N + 7,
+					       X bsl N + Acc, TrUserData);
+skip_length_delimited_cs_fetch_all_friends(<<0:1, X:7,
+					     Rest/binary>>,
+					   N, Acc, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_cs_fetch_all_friends(Rest2, 0, 0,
+					    TrUserData).
+
+skip_group_cs_fetch_all_friends(Bin, FNum, Z2,
+				TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_cs_fetch_all_friends(Rest, 0, Z2,
+					    TrUserData).
+
+skip_32_cs_fetch_all_friends(<<_:32, Rest/binary>>, Z1,
+			     Z2, TrUserData) ->
+    dfp_read_field_def_cs_fetch_all_friends(Rest, Z1, Z2,
+					    TrUserData).
+
+skip_64_cs_fetch_all_friends(<<_:64, Rest/binary>>, Z1,
+			     Z2, TrUserData) ->
+    dfp_read_field_def_cs_fetch_all_friends(Rest, Z1, Z2,
+					    TrUserData).
+
+decode_msg_sc_fetch_all_friends(Bin, TrUserData) ->
+    dfp_read_field_def_sc_fetch_all_friends(Bin, 0, 0,
+					    id([], TrUserData), TrUserData).
+
+dfp_read_field_def_sc_fetch_all_friends(<<10,
+					  Rest/binary>>,
+					Z1, Z2, F@_1, TrUserData) ->
+    d_field_sc_fetch_all_friends_frends(Rest, Z1, Z2, F@_1,
+					TrUserData);
+dfp_read_field_def_sc_fetch_all_friends(<<>>, 0, 0, R1,
+					TrUserData) ->
+    #sc_fetch_all_friends{frends =
+			      lists_reverse(R1, TrUserData)};
+dfp_read_field_def_sc_fetch_all_friends(Other, Z1, Z2,
+					F@_1, TrUserData) ->
+    dg_read_field_def_sc_fetch_all_friends(Other, Z1, Z2,
+					   F@_1, TrUserData).
+
+dg_read_field_def_sc_fetch_all_friends(<<1:1, X:7,
+					 Rest/binary>>,
+				       N, Acc, F@_1, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_sc_fetch_all_friends(Rest, N + 7,
+					   X bsl N + Acc, F@_1, TrUserData);
+dg_read_field_def_sc_fetch_all_friends(<<0:1, X:7,
+					 Rest/binary>>,
+				       N, Acc, F@_1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 ->
+	  d_field_sc_fetch_all_friends_frends(Rest, 0, 0, F@_1,
+					      TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 ->
+		skip_varint_sc_fetch_all_friends(Rest, 0, 0, F@_1,
+						 TrUserData);
+	    1 ->
+		skip_64_sc_fetch_all_friends(Rest, 0, 0, F@_1,
+					     TrUserData);
+	    2 ->
+		skip_length_delimited_sc_fetch_all_friends(Rest, 0, 0,
+							   F@_1, TrUserData);
+	    3 ->
+		skip_group_sc_fetch_all_friends(Rest, Key bsr 3, 0,
+						F@_1, TrUserData);
+	    5 ->
+		skip_32_sc_fetch_all_friends(Rest, 0, 0, F@_1,
+					     TrUserData)
+	  end
+    end;
+dg_read_field_def_sc_fetch_all_friends(<<>>, 0, 0, R1,
+				       TrUserData) ->
+    #sc_fetch_all_friends{frends =
+			      lists_reverse(R1, TrUserData)}.
+
+d_field_sc_fetch_all_friends_frends(<<1:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, F@_1, TrUserData)
+    when N < 57 ->
+    d_field_sc_fetch_all_friends_frends(Rest, N + 7,
+					X bsl N + Acc, F@_1, TrUserData);
+d_field_sc_fetch_all_friends_frends(<<0:1, X:7,
+				      Rest/binary>>,
+				    N, Acc, Prev, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bs:Len/binary, Rest2/binary>> = Rest,
 			   {id(decode_msg_p_frend(Bs, TrUserData), TrUserData),
 			    Rest2}
 			 end,
-    dfp_read_field_def_sc_frends_all_friends(RestF, 0, 0,
-					     cons(NewFValue, Prev, TrUserData),
-					     TrUserData).
+    dfp_read_field_def_sc_fetch_all_friends(RestF, 0, 0,
+					    cons(NewFValue, Prev, TrUserData),
+					    TrUserData).
 
-skip_varint_sc_frends_all_friends(<<1:1, _:7,
-				    Rest/binary>>,
-				  Z1, Z2, F@_1, TrUserData) ->
-    skip_varint_sc_frends_all_friends(Rest, Z1, Z2, F@_1,
-				      TrUserData);
-skip_varint_sc_frends_all_friends(<<0:1, _:7,
-				    Rest/binary>>,
-				  Z1, Z2, F@_1, TrUserData) ->
-    dfp_read_field_def_sc_frends_all_friends(Rest, Z1, Z2,
-					     F@_1, TrUserData).
+skip_varint_sc_fetch_all_friends(<<1:1, _:7,
+				   Rest/binary>>,
+				 Z1, Z2, F@_1, TrUserData) ->
+    skip_varint_sc_fetch_all_friends(Rest, Z1, Z2, F@_1,
+				     TrUserData);
+skip_varint_sc_fetch_all_friends(<<0:1, _:7,
+				   Rest/binary>>,
+				 Z1, Z2, F@_1, TrUserData) ->
+    dfp_read_field_def_sc_fetch_all_friends(Rest, Z1, Z2,
+					    F@_1, TrUserData).
 
-skip_length_delimited_sc_frends_all_friends(<<1:1, X:7,
-					      Rest/binary>>,
-					    N, Acc, F@_1, TrUserData)
+skip_length_delimited_sc_fetch_all_friends(<<1:1, X:7,
+					     Rest/binary>>,
+					   N, Acc, F@_1, TrUserData)
     when N < 57 ->
-    skip_length_delimited_sc_frends_all_friends(Rest, N + 7,
-						X bsl N + Acc, F@_1,
-						TrUserData);
-skip_length_delimited_sc_frends_all_friends(<<0:1, X:7,
-					      Rest/binary>>,
-					    N, Acc, F@_1, TrUserData) ->
+    skip_length_delimited_sc_fetch_all_friends(Rest, N + 7,
+					       X bsl N + Acc, F@_1, TrUserData);
+skip_length_delimited_sc_fetch_all_friends(<<0:1, X:7,
+					     Rest/binary>>,
+					   N, Acc, F@_1, TrUserData) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_sc_frends_all_friends(Rest2, 0, 0,
-					     F@_1, TrUserData).
+    dfp_read_field_def_sc_fetch_all_friends(Rest2, 0, 0,
+					    F@_1, TrUserData).
 
-skip_group_sc_frends_all_friends(Bin, FNum, Z2, F@_1,
-				 TrUserData) ->
+skip_group_sc_fetch_all_friends(Bin, FNum, Z2, F@_1,
+				TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_sc_frends_all_friends(Rest, 0, Z2,
-					     F@_1, TrUserData).
+    dfp_read_field_def_sc_fetch_all_friends(Rest, 0, Z2,
+					    F@_1, TrUserData).
 
-skip_32_sc_frends_all_friends(<<_:32, Rest/binary>>, Z1,
-			      Z2, F@_1, TrUserData) ->
-    dfp_read_field_def_sc_frends_all_friends(Rest, Z1, Z2,
-					     F@_1, TrUserData).
+skip_32_sc_fetch_all_friends(<<_:32, Rest/binary>>, Z1,
+			     Z2, F@_1, TrUserData) ->
+    dfp_read_field_def_sc_fetch_all_friends(Rest, Z1, Z2,
+					    F@_1, TrUserData).
 
-skip_64_sc_frends_all_friends(<<_:64, Rest/binary>>, Z1,
-			      Z2, F@_1, TrUserData) ->
-    dfp_read_field_def_sc_frends_all_friends(Rest, Z1, Z2,
-					     F@_1, TrUserData).
+skip_64_sc_fetch_all_friends(<<_:64, Rest/binary>>, Z1,
+			     Z2, F@_1, TrUserData) ->
+    dfp_read_field_def_sc_fetch_all_friends(Rest, Z1, Z2,
+					    F@_1, TrUserData).
 
 decode_msg_p_frend(Bin, TrUserData) ->
     dfp_read_field_def_p_frend(Bin, 0, 0,
@@ -780,967 +1086,6 @@ skip_64_p_frend(<<_:64, Rest/binary>>, Z1, Z2, F@_1,
     dfp_read_field_def_p_frend(Rest, Z1, Z2, F@_1, F@_2,
 			       TrUserData).
 
-decode_msg_p_msg(Bin, TrUserData) ->
-    dfp_read_field_def_p_msg(Bin, 0, 0,
-			     id(undefined, TrUserData),
-			     id(undefined, TrUserData),
-			     id(undefined, TrUserData), TrUserData).
-
-dfp_read_field_def_p_msg(<<8, Rest/binary>>, Z1, Z2,
-			 F@_1, F@_2, F@_3, TrUserData) ->
-    d_field_p_msg_msg_type(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			   TrUserData);
-dfp_read_field_def_p_msg(<<18, Rest/binary>>, Z1, Z2,
-			 F@_1, F@_2, F@_3, TrUserData) ->
-    d_field_p_msg_text_msg(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			   TrUserData);
-dfp_read_field_def_p_msg(<<26, Rest/binary>>, Z1, Z2,
-			 F@_1, F@_2, F@_3, TrUserData) ->
-    d_field_p_msg_pic(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-		      TrUserData);
-dfp_read_field_def_p_msg(<<>>, 0, 0, F@_1, F@_2, F@_3,
-			 _) ->
-    #p_msg{msg_type = F@_1, text_msg = F@_2, pic = F@_3};
-dfp_read_field_def_p_msg(Other, Z1, Z2, F@_1, F@_2,
-			 F@_3, TrUserData) ->
-    dg_read_field_def_p_msg(Other, Z1, Z2, F@_1, F@_2, F@_3,
-			    TrUserData).
-
-dg_read_field_def_p_msg(<<1:1, X:7, Rest/binary>>, N,
-			Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_p_msg(Rest, N + 7, X bsl N + Acc,
-			    F@_1, F@_2, F@_3, TrUserData);
-dg_read_field_def_p_msg(<<0:1, X:7, Rest/binary>>, N,
-			Acc, F@_1, F@_2, F@_3, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      8 ->
-	  d_field_p_msg_msg_type(Rest, 0, 0, F@_1, F@_2, F@_3,
-				 TrUserData);
-      18 ->
-	  d_field_p_msg_text_msg(Rest, 0, 0, F@_1, F@_2, F@_3,
-				 TrUserData);
-      26 ->
-	  d_field_p_msg_pic(Rest, 0, 0, F@_1, F@_2, F@_3,
-			    TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_p_msg(Rest, 0, 0, F@_1, F@_2, F@_3,
-				  TrUserData);
-	    1 ->
-		skip_64_p_msg(Rest, 0, 0, F@_1, F@_2, F@_3, TrUserData);
-	    2 ->
-		skip_length_delimited_p_msg(Rest, 0, 0, F@_1, F@_2,
-					    F@_3, TrUserData);
-	    3 ->
-		skip_group_p_msg(Rest, Key bsr 3, 0, F@_1, F@_2, F@_3,
-				 TrUserData);
-	    5 ->
-		skip_32_p_msg(Rest, 0, 0, F@_1, F@_2, F@_3, TrUserData)
-	  end
-    end;
-dg_read_field_def_p_msg(<<>>, 0, 0, F@_1, F@_2, F@_3,
-			_) ->
-    #p_msg{msg_type = F@_1, text_msg = F@_2, pic = F@_3}.
-
-d_field_p_msg_msg_type(<<1:1, X:7, Rest/binary>>, N,
-		       Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    d_field_p_msg_msg_type(Rest, N + 7, X bsl N + Acc, F@_1,
-			   F@_2, F@_3, TrUserData);
-d_field_p_msg_msg_type(<<0:1, X:7, Rest/binary>>, N,
-		       Acc, _, F@_2, F@_3, TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_p_msg(RestF, 0, 0, NewFValue, F@_2,
-			     F@_3, TrUserData).
-
-d_field_p_msg_text_msg(<<1:1, X:7, Rest/binary>>, N,
-		       Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    d_field_p_msg_text_msg(Rest, N + 7, X bsl N + Acc, F@_1,
-			   F@_2, F@_3, TrUserData);
-d_field_p_msg_text_msg(<<0:1, X:7, Rest/binary>>, N,
-		       Acc, F@_1, _, F@_3, TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
-			   {id(binary:copy(Bytes), TrUserData), Rest2}
-			 end,
-    dfp_read_field_def_p_msg(RestF, 0, 0, F@_1, NewFValue,
-			     F@_3, TrUserData).
-
-d_field_p_msg_pic(<<1:1, X:7, Rest/binary>>, N, Acc,
-		  F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    d_field_p_msg_pic(Rest, N + 7, X bsl N + Acc, F@_1,
-		      F@_2, F@_3, TrUserData);
-d_field_p_msg_pic(<<0:1, X:7, Rest/binary>>, N, Acc,
-		  F@_1, F@_2, _, TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
-			   {id(binary:copy(Bytes), TrUserData), Rest2}
-			 end,
-    dfp_read_field_def_p_msg(RestF, 0, 0, F@_1, F@_2,
-			     NewFValue, TrUserData).
-
-skip_varint_p_msg(<<1:1, _:7, Rest/binary>>, Z1, Z2,
-		  F@_1, F@_2, F@_3, TrUserData) ->
-    skip_varint_p_msg(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-		      TrUserData);
-skip_varint_p_msg(<<0:1, _:7, Rest/binary>>, Z1, Z2,
-		  F@_1, F@_2, F@_3, TrUserData) ->
-    dfp_read_field_def_p_msg(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			     TrUserData).
-
-skip_length_delimited_p_msg(<<1:1, X:7, Rest/binary>>,
-			    N, Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_p_msg(Rest, N + 7, X bsl N + Acc,
-				F@_1, F@_2, F@_3, TrUserData);
-skip_length_delimited_p_msg(<<0:1, X:7, Rest/binary>>,
-			    N, Acc, F@_1, F@_2, F@_3, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_p_msg(Rest2, 0, 0, F@_1, F@_2, F@_3,
-			     TrUserData).
-
-skip_group_p_msg(Bin, FNum, Z2, F@_1, F@_2, F@_3,
-		 TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_p_msg(Rest, 0, Z2, F@_1, F@_2, F@_3,
-			     TrUserData).
-
-skip_32_p_msg(<<_:32, Rest/binary>>, Z1, Z2, F@_1, F@_2,
-	      F@_3, TrUserData) ->
-    dfp_read_field_def_p_msg(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			     TrUserData).
-
-skip_64_p_msg(<<_:64, Rest/binary>>, Z1, Z2, F@_1, F@_2,
-	      F@_3, TrUserData) ->
-    dfp_read_field_def_p_msg(Rest, Z1, Z2, F@_1, F@_2, F@_3,
-			     TrUserData).
-
-decode_msg_cs_chat_single(Bin, TrUserData) ->
-    dfp_read_field_def_cs_chat_single(Bin, 0, 0,
-				      id(undefined, TrUserData),
-				      id(undefined, TrUserData), TrUserData).
-
-dfp_read_field_def_cs_chat_single(<<8, Rest/binary>>,
-				  Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_cs_chat_single_receiver_id(Rest, Z1, Z2, F@_1,
-				       F@_2, TrUserData);
-dfp_read_field_def_cs_chat_single(<<18, Rest/binary>>,
-				  Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_cs_chat_single_msg(Rest, Z1, Z2, F@_1, F@_2,
-			       TrUserData);
-dfp_read_field_def_cs_chat_single(<<>>, 0, 0, F@_1,
-				  F@_2, _) ->
-    #cs_chat_single{receiver_id = F@_1, msg = F@_2};
-dfp_read_field_def_cs_chat_single(Other, Z1, Z2, F@_1,
-				  F@_2, TrUserData) ->
-    dg_read_field_def_cs_chat_single(Other, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-dg_read_field_def_cs_chat_single(<<1:1, X:7,
-				   Rest/binary>>,
-				 N, Acc, F@_1, F@_2, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_cs_chat_single(Rest, N + 7,
-				     X bsl N + Acc, F@_1, F@_2, TrUserData);
-dg_read_field_def_cs_chat_single(<<0:1, X:7,
-				   Rest/binary>>,
-				 N, Acc, F@_1, F@_2, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      8 ->
-	  d_field_cs_chat_single_receiver_id(Rest, 0, 0, F@_1,
-					     F@_2, TrUserData);
-      18 ->
-	  d_field_cs_chat_single_msg(Rest, 0, 0, F@_1, F@_2,
-				     TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_cs_chat_single(Rest, 0, 0, F@_1, F@_2,
-					   TrUserData);
-	    1 ->
-		skip_64_cs_chat_single(Rest, 0, 0, F@_1, F@_2,
-				       TrUserData);
-	    2 ->
-		skip_length_delimited_cs_chat_single(Rest, 0, 0, F@_1,
-						     F@_2, TrUserData);
-	    3 ->
-		skip_group_cs_chat_single(Rest, Key bsr 3, 0, F@_1,
-					  F@_2, TrUserData);
-	    5 ->
-		skip_32_cs_chat_single(Rest, 0, 0, F@_1, F@_2,
-				       TrUserData)
-	  end
-    end;
-dg_read_field_def_cs_chat_single(<<>>, 0, 0, F@_1, F@_2,
-				 _) ->
-    #cs_chat_single{receiver_id = F@_1, msg = F@_2}.
-
-d_field_cs_chat_single_receiver_id(<<1:1, X:7,
-				     Rest/binary>>,
-				   N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_cs_chat_single_receiver_id(Rest, N + 7,
-				       X bsl N + Acc, F@_1, F@_2, TrUserData);
-d_field_cs_chat_single_receiver_id(<<0:1, X:7,
-				     Rest/binary>>,
-				   N, Acc, _, F@_2, TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_cs_chat_single(RestF, 0, 0,
-				      NewFValue, F@_2, TrUserData).
-
-d_field_cs_chat_single_msg(<<1:1, X:7, Rest/binary>>, N,
-			   Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_cs_chat_single_msg(Rest, N + 7, X bsl N + Acc,
-			       F@_1, F@_2, TrUserData);
-d_field_cs_chat_single_msg(<<0:1, X:7, Rest/binary>>, N,
-			   Acc, F@_1, Prev, TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bs:Len/binary, Rest2/binary>> = Rest,
-			   {id(decode_msg_p_msg(Bs, TrUserData), TrUserData),
-			    Rest2}
-			 end,
-    dfp_read_field_def_cs_chat_single(RestF, 0, 0, F@_1,
-				      if Prev == undefined -> NewFValue;
-					 true ->
-					     merge_msg_p_msg(Prev, NewFValue,
-							     TrUserData)
-				      end,
-				      TrUserData).
-
-skip_varint_cs_chat_single(<<1:1, _:7, Rest/binary>>,
-			   Z1, Z2, F@_1, F@_2, TrUserData) ->
-    skip_varint_cs_chat_single(Rest, Z1, Z2, F@_1, F@_2,
-			       TrUserData);
-skip_varint_cs_chat_single(<<0:1, _:7, Rest/binary>>,
-			   Z1, Z2, F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_cs_chat_single(Rest, Z1, Z2, F@_1,
-				      F@_2, TrUserData).
-
-skip_length_delimited_cs_chat_single(<<1:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_cs_chat_single(Rest, N + 7,
-					 X bsl N + Acc, F@_1, F@_2, TrUserData);
-skip_length_delimited_cs_chat_single(<<0:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_cs_chat_single(Rest2, 0, 0, F@_1,
-				      F@_2, TrUserData).
-
-skip_group_cs_chat_single(Bin, FNum, Z2, F@_1, F@_2,
-			  TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_cs_chat_single(Rest, 0, Z2, F@_1,
-				      F@_2, TrUserData).
-
-skip_32_cs_chat_single(<<_:32, Rest/binary>>, Z1, Z2,
-		       F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_cs_chat_single(Rest, Z1, Z2, F@_1,
-				      F@_2, TrUserData).
-
-skip_64_cs_chat_single(<<_:64, Rest/binary>>, Z1, Z2,
-		       F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_cs_chat_single(Rest, Z1, Z2, F@_1,
-				      F@_2, TrUserData).
-
-decode_msg_sc_chat_single(Bin, TrUserData) ->
-    dfp_read_field_def_sc_chat_single(Bin, 0, 0,
-				      id(undefined, TrUserData),
-				      id(undefined, TrUserData), TrUserData).
-
-dfp_read_field_def_sc_chat_single(<<8, Rest/binary>>,
-				  Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_sc_chat_single_result(Rest, Z1, Z2, F@_1, F@_2,
-				  TrUserData);
-dfp_read_field_def_sc_chat_single(<<16, Rest/binary>>,
-				  Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_sc_chat_single_msg_id(Rest, Z1, Z2, F@_1, F@_2,
-				  TrUserData);
-dfp_read_field_def_sc_chat_single(<<>>, 0, 0, F@_1,
-				  F@_2, _) ->
-    #sc_chat_single{result = F@_1, msg_id = F@_2};
-dfp_read_field_def_sc_chat_single(Other, Z1, Z2, F@_1,
-				  F@_2, TrUserData) ->
-    dg_read_field_def_sc_chat_single(Other, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-dg_read_field_def_sc_chat_single(<<1:1, X:7,
-				   Rest/binary>>,
-				 N, Acc, F@_1, F@_2, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_sc_chat_single(Rest, N + 7,
-				     X bsl N + Acc, F@_1, F@_2, TrUserData);
-dg_read_field_def_sc_chat_single(<<0:1, X:7,
-				   Rest/binary>>,
-				 N, Acc, F@_1, F@_2, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      8 ->
-	  d_field_sc_chat_single_result(Rest, 0, 0, F@_1, F@_2,
-					TrUserData);
-      16 ->
-	  d_field_sc_chat_single_msg_id(Rest, 0, 0, F@_1, F@_2,
-					TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_sc_chat_single(Rest, 0, 0, F@_1, F@_2,
-					   TrUserData);
-	    1 ->
-		skip_64_sc_chat_single(Rest, 0, 0, F@_1, F@_2,
-				       TrUserData);
-	    2 ->
-		skip_length_delimited_sc_chat_single(Rest, 0, 0, F@_1,
-						     F@_2, TrUserData);
-	    3 ->
-		skip_group_sc_chat_single(Rest, Key bsr 3, 0, F@_1,
-					  F@_2, TrUserData);
-	    5 ->
-		skip_32_sc_chat_single(Rest, 0, 0, F@_1, F@_2,
-				       TrUserData)
-	  end
-    end;
-dg_read_field_def_sc_chat_single(<<>>, 0, 0, F@_1, F@_2,
-				 _) ->
-    #sc_chat_single{result = F@_1, msg_id = F@_2}.
-
-d_field_sc_chat_single_result(<<1:1, X:7, Rest/binary>>,
-			      N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_single_result(Rest, N + 7,
-				  X bsl N + Acc, F@_1, F@_2, TrUserData);
-d_field_sc_chat_single_result(<<0:1, X:7, Rest/binary>>,
-			      N, Acc, _, F@_2, TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_single(RestF, 0, 0,
-				      NewFValue, F@_2, TrUserData).
-
-d_field_sc_chat_single_msg_id(<<1:1, X:7, Rest/binary>>,
-			      N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_single_msg_id(Rest, N + 7,
-				  X bsl N + Acc, F@_1, F@_2, TrUserData);
-d_field_sc_chat_single_msg_id(<<0:1, X:7, Rest/binary>>,
-			      N, Acc, F@_1, _, TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_single(RestF, 0, 0, F@_1,
-				      NewFValue, TrUserData).
-
-skip_varint_sc_chat_single(<<1:1, _:7, Rest/binary>>,
-			   Z1, Z2, F@_1, F@_2, TrUserData) ->
-    skip_varint_sc_chat_single(Rest, Z1, Z2, F@_1, F@_2,
-			       TrUserData);
-skip_varint_sc_chat_single(<<0:1, _:7, Rest/binary>>,
-			   Z1, Z2, F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_sc_chat_single(Rest, Z1, Z2, F@_1,
-				      F@_2, TrUserData).
-
-skip_length_delimited_sc_chat_single(<<1:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_sc_chat_single(Rest, N + 7,
-					 X bsl N + Acc, F@_1, F@_2, TrUserData);
-skip_length_delimited_sc_chat_single(<<0:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_sc_chat_single(Rest2, 0, 0, F@_1,
-				      F@_2, TrUserData).
-
-skip_group_sc_chat_single(Bin, FNum, Z2, F@_1, F@_2,
-			  TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_sc_chat_single(Rest, 0, Z2, F@_1,
-				      F@_2, TrUserData).
-
-skip_32_sc_chat_single(<<_:32, Rest/binary>>, Z1, Z2,
-		       F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_sc_chat_single(Rest, Z1, Z2, F@_1,
-				      F@_2, TrUserData).
-
-skip_64_sc_chat_single(<<_:64, Rest/binary>>, Z1, Z2,
-		       F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_sc_chat_single(Rest, Z1, Z2, F@_1,
-				      F@_2, TrUserData).
-
-decode_msg_cs_chat_group(Bin, TrUserData) ->
-    dfp_read_field_def_cs_chat_group(Bin, 0, 0,
-				     id(undefined, TrUserData),
-				     id(undefined, TrUserData), TrUserData).
-
-dfp_read_field_def_cs_chat_group(<<8, Rest/binary>>, Z1,
-				 Z2, F@_1, F@_2, TrUserData) ->
-    d_field_cs_chat_group_group_id(Rest, Z1, Z2, F@_1, F@_2,
-				   TrUserData);
-dfp_read_field_def_cs_chat_group(<<18, Rest/binary>>,
-				 Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_cs_chat_group_msg(Rest, Z1, Z2, F@_1, F@_2,
-			      TrUserData);
-dfp_read_field_def_cs_chat_group(<<>>, 0, 0, F@_1, F@_2,
-				 _) ->
-    #cs_chat_group{group_id = F@_1, msg = F@_2};
-dfp_read_field_def_cs_chat_group(Other, Z1, Z2, F@_1,
-				 F@_2, TrUserData) ->
-    dg_read_field_def_cs_chat_group(Other, Z1, Z2, F@_1,
-				    F@_2, TrUserData).
-
-dg_read_field_def_cs_chat_group(<<1:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_cs_chat_group(Rest, N + 7,
-				    X bsl N + Acc, F@_1, F@_2, TrUserData);
-dg_read_field_def_cs_chat_group(<<0:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      8 ->
-	  d_field_cs_chat_group_group_id(Rest, 0, 0, F@_1, F@_2,
-					 TrUserData);
-      18 ->
-	  d_field_cs_chat_group_msg(Rest, 0, 0, F@_1, F@_2,
-				    TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_cs_chat_group(Rest, 0, 0, F@_1, F@_2,
-					  TrUserData);
-	    1 ->
-		skip_64_cs_chat_group(Rest, 0, 0, F@_1, F@_2,
-				      TrUserData);
-	    2 ->
-		skip_length_delimited_cs_chat_group(Rest, 0, 0, F@_1,
-						    F@_2, TrUserData);
-	    3 ->
-		skip_group_cs_chat_group(Rest, Key bsr 3, 0, F@_1, F@_2,
-					 TrUserData);
-	    5 ->
-		skip_32_cs_chat_group(Rest, 0, 0, F@_1, F@_2,
-				      TrUserData)
-	  end
-    end;
-dg_read_field_def_cs_chat_group(<<>>, 0, 0, F@_1, F@_2,
-				_) ->
-    #cs_chat_group{group_id = F@_1, msg = F@_2}.
-
-d_field_cs_chat_group_group_id(<<1:1, X:7,
-				 Rest/binary>>,
-			       N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_cs_chat_group_group_id(Rest, N + 7,
-				   X bsl N + Acc, F@_1, F@_2, TrUserData);
-d_field_cs_chat_group_group_id(<<0:1, X:7,
-				 Rest/binary>>,
-			       N, Acc, _, F@_2, TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_cs_chat_group(RestF, 0, 0, NewFValue,
-				     F@_2, TrUserData).
-
-d_field_cs_chat_group_msg(<<1:1, X:7, Rest/binary>>, N,
-			  Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_cs_chat_group_msg(Rest, N + 7, X bsl N + Acc,
-			      F@_1, F@_2, TrUserData);
-d_field_cs_chat_group_msg(<<0:1, X:7, Rest/binary>>, N,
-			  Acc, F@_1, Prev, TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bs:Len/binary, Rest2/binary>> = Rest,
-			   {id(decode_msg_p_msg(Bs, TrUserData), TrUserData),
-			    Rest2}
-			 end,
-    dfp_read_field_def_cs_chat_group(RestF, 0, 0, F@_1,
-				     if Prev == undefined -> NewFValue;
-					true ->
-					    merge_msg_p_msg(Prev, NewFValue,
-							    TrUserData)
-				     end,
-				     TrUserData).
-
-skip_varint_cs_chat_group(<<1:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, F@_2, TrUserData) ->
-    skip_varint_cs_chat_group(Rest, Z1, Z2, F@_1, F@_2,
-			      TrUserData);
-skip_varint_cs_chat_group(<<0:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_cs_chat_group(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_length_delimited_cs_chat_group(<<1:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_cs_chat_group(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, TrUserData);
-skip_length_delimited_cs_chat_group(<<0:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_cs_chat_group(Rest2, 0, 0, F@_1,
-				     F@_2, TrUserData).
-
-skip_group_cs_chat_group(Bin, FNum, Z2, F@_1, F@_2,
-			 TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_cs_chat_group(Rest, 0, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_32_cs_chat_group(<<_:32, Rest/binary>>, Z1, Z2,
-		      F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_cs_chat_group(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_64_cs_chat_group(<<_:64, Rest/binary>>, Z1, Z2,
-		      F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_cs_chat_group(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-decode_msg_sc_chat_group(Bin, TrUserData) ->
-    dfp_read_field_def_sc_chat_group(Bin, 0, 0,
-				     id(undefined, TrUserData),
-				     id(undefined, TrUserData), TrUserData).
-
-dfp_read_field_def_sc_chat_group(<<8, Rest/binary>>, Z1,
-				 Z2, F@_1, F@_2, TrUserData) ->
-    d_field_sc_chat_group_result(Rest, Z1, Z2, F@_1, F@_2,
-				 TrUserData);
-dfp_read_field_def_sc_chat_group(<<16, Rest/binary>>,
-				 Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_sc_chat_group_msg_id(Rest, Z1, Z2, F@_1, F@_2,
-				 TrUserData);
-dfp_read_field_def_sc_chat_group(<<>>, 0, 0, F@_1, F@_2,
-				 _) ->
-    #sc_chat_group{result = F@_1, msg_id = F@_2};
-dfp_read_field_def_sc_chat_group(Other, Z1, Z2, F@_1,
-				 F@_2, TrUserData) ->
-    dg_read_field_def_sc_chat_group(Other, Z1, Z2, F@_1,
-				    F@_2, TrUserData).
-
-dg_read_field_def_sc_chat_group(<<1:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_sc_chat_group(Rest, N + 7,
-				    X bsl N + Acc, F@_1, F@_2, TrUserData);
-dg_read_field_def_sc_chat_group(<<0:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      8 ->
-	  d_field_sc_chat_group_result(Rest, 0, 0, F@_1, F@_2,
-				       TrUserData);
-      16 ->
-	  d_field_sc_chat_group_msg_id(Rest, 0, 0, F@_1, F@_2,
-				       TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_sc_chat_group(Rest, 0, 0, F@_1, F@_2,
-					  TrUserData);
-	    1 ->
-		skip_64_sc_chat_group(Rest, 0, 0, F@_1, F@_2,
-				      TrUserData);
-	    2 ->
-		skip_length_delimited_sc_chat_group(Rest, 0, 0, F@_1,
-						    F@_2, TrUserData);
-	    3 ->
-		skip_group_sc_chat_group(Rest, Key bsr 3, 0, F@_1, F@_2,
-					 TrUserData);
-	    5 ->
-		skip_32_sc_chat_group(Rest, 0, 0, F@_1, F@_2,
-				      TrUserData)
-	  end
-    end;
-dg_read_field_def_sc_chat_group(<<>>, 0, 0, F@_1, F@_2,
-				_) ->
-    #sc_chat_group{result = F@_1, msg_id = F@_2}.
-
-d_field_sc_chat_group_result(<<1:1, X:7, Rest/binary>>,
-			     N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_group_result(Rest, N + 7, X bsl N + Acc,
-				 F@_1, F@_2, TrUserData);
-d_field_sc_chat_group_result(<<0:1, X:7, Rest/binary>>,
-			     N, Acc, _, F@_2, TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_group(RestF, 0, 0, NewFValue,
-				     F@_2, TrUserData).
-
-d_field_sc_chat_group_msg_id(<<1:1, X:7, Rest/binary>>,
-			     N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_group_msg_id(Rest, N + 7, X bsl N + Acc,
-				 F@_1, F@_2, TrUserData);
-d_field_sc_chat_group_msg_id(<<0:1, X:7, Rest/binary>>,
-			     N, Acc, F@_1, _, TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_group(RestF, 0, 0, F@_1,
-				     NewFValue, TrUserData).
-
-skip_varint_sc_chat_group(<<1:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, F@_2, TrUserData) ->
-    skip_varint_sc_chat_group(Rest, Z1, Z2, F@_1, F@_2,
-			      TrUserData);
-skip_varint_sc_chat_group(<<0:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_sc_chat_group(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_length_delimited_sc_chat_group(<<1:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_sc_chat_group(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, TrUserData);
-skip_length_delimited_sc_chat_group(<<0:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_sc_chat_group(Rest2, 0, 0, F@_1,
-				     F@_2, TrUserData).
-
-skip_group_sc_chat_group(Bin, FNum, Z2, F@_1, F@_2,
-			 TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_sc_chat_group(Rest, 0, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_32_sc_chat_group(<<_:32, Rest/binary>>, Z1, Z2,
-		      F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_sc_chat_group(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_64_sc_chat_group(<<_:64, Rest/binary>>, Z1, Z2,
-		      F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_sc_chat_group(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-decode_msg_sc_chat_msg_notify(Bin, TrUserData) ->
-    dfp_read_field_def_sc_chat_msg_notify(Bin, 0, 0,
-					  id(undefined, TrUserData),
-					  id(undefined, TrUserData),
-					  id(undefined, TrUserData),
-					  id(undefined, TrUserData),
-					  id(undefined, TrUserData),
-					  TrUserData).
-
-dfp_read_field_def_sc_chat_msg_notify(<<8,
-					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, F@_4, F@_5,
-				      TrUserData) ->
-    d_field_sc_chat_msg_notify_sender_id(Rest, Z1, Z2, F@_1,
-					 F@_2, F@_3, F@_4, F@_5, TrUserData);
-dfp_read_field_def_sc_chat_msg_notify(<<16,
-					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, F@_4, F@_5,
-				      TrUserData) ->
-    d_field_sc_chat_msg_notify_group_id(Rest, Z1, Z2, F@_1,
-					F@_2, F@_3, F@_4, F@_5, TrUserData);
-dfp_read_field_def_sc_chat_msg_notify(<<24,
-					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, F@_4, F@_5,
-				      TrUserData) ->
-    d_field_sc_chat_msg_notify_msg_id(Rest, Z1, Z2, F@_1,
-				      F@_2, F@_3, F@_4, F@_5, TrUserData);
-dfp_read_field_def_sc_chat_msg_notify(<<32,
-					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, F@_4, F@_5,
-				      TrUserData) ->
-    d_field_sc_chat_msg_notify_time(Rest, Z1, Z2, F@_1,
-				    F@_2, F@_3, F@_4, F@_5, TrUserData);
-dfp_read_field_def_sc_chat_msg_notify(<<42,
-					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, F@_4, F@_5,
-				      TrUserData) ->
-    d_field_sc_chat_msg_notify_msg(Rest, Z1, Z2, F@_1, F@_2,
-				   F@_3, F@_4, F@_5, TrUserData);
-dfp_read_field_def_sc_chat_msg_notify(<<>>, 0, 0, F@_1,
-				      F@_2, F@_3, F@_4, F@_5, _) ->
-    #sc_chat_msg_notify{sender_id = F@_1, group_id = F@_2,
-			msg_id = F@_3, time = F@_4, msg = F@_5};
-dfp_read_field_def_sc_chat_msg_notify(Other, Z1, Z2,
-				      F@_1, F@_2, F@_3, F@_4, F@_5,
-				      TrUserData) ->
-    dg_read_field_def_sc_chat_msg_notify(Other, Z1, Z2,
-					 F@_1, F@_2, F@_3, F@_4, F@_5,
-					 TrUserData).
-
-dg_read_field_def_sc_chat_msg_notify(<<1:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				     TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_sc_chat_msg_notify(Rest, N + 7,
-					 X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
-					 F@_5, TrUserData);
-dg_read_field_def_sc_chat_msg_notify(<<0:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				     TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      8 ->
-	  d_field_sc_chat_msg_notify_sender_id(Rest, 0, 0, F@_1,
-					       F@_2, F@_3, F@_4, F@_5,
-					       TrUserData);
-      16 ->
-	  d_field_sc_chat_msg_notify_group_id(Rest, 0, 0, F@_1,
-					      F@_2, F@_3, F@_4, F@_5,
-					      TrUserData);
-      24 ->
-	  d_field_sc_chat_msg_notify_msg_id(Rest, 0, 0, F@_1,
-					    F@_2, F@_3, F@_4, F@_5, TrUserData);
-      32 ->
-	  d_field_sc_chat_msg_notify_time(Rest, 0, 0, F@_1, F@_2,
-					  F@_3, F@_4, F@_5, TrUserData);
-      42 ->
-	  d_field_sc_chat_msg_notify_msg(Rest, 0, 0, F@_1, F@_2,
-					 F@_3, F@_4, F@_5, TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_sc_chat_msg_notify(Rest, 0, 0, F@_1, F@_2,
-					       F@_3, F@_4, F@_5, TrUserData);
-	    1 ->
-		skip_64_sc_chat_msg_notify(Rest, 0, 0, F@_1, F@_2, F@_3,
-					   F@_4, F@_5, TrUserData);
-	    2 ->
-		skip_length_delimited_sc_chat_msg_notify(Rest, 0, 0,
-							 F@_1, F@_2, F@_3, F@_4,
-							 F@_5, TrUserData);
-	    3 ->
-		skip_group_sc_chat_msg_notify(Rest, Key bsr 3, 0, F@_1,
-					      F@_2, F@_3, F@_4, F@_5,
-					      TrUserData);
-	    5 ->
-		skip_32_sc_chat_msg_notify(Rest, 0, 0, F@_1, F@_2, F@_3,
-					   F@_4, F@_5, TrUserData)
-	  end
-    end;
-dg_read_field_def_sc_chat_msg_notify(<<>>, 0, 0, F@_1,
-				     F@_2, F@_3, F@_4, F@_5, _) ->
-    #sc_chat_msg_notify{sender_id = F@_1, group_id = F@_2,
-			msg_id = F@_3, time = F@_4, msg = F@_5}.
-
-d_field_sc_chat_msg_notify_sender_id(<<1:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				     TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_msg_notify_sender_id(Rest, N + 7,
-					 X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
-					 F@_5, TrUserData);
-d_field_sc_chat_msg_notify_sender_id(<<0:1, X:7,
-				       Rest/binary>>,
-				     N, Acc, _, F@_2, F@_3, F@_4, F@_5,
-				     TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_msg_notify(RestF, 0, 0,
-					  NewFValue, F@_2, F@_3, F@_4, F@_5,
-					  TrUserData).
-
-d_field_sc_chat_msg_notify_group_id(<<1:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				    TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_msg_notify_group_id(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
-					F@_5, TrUserData);
-d_field_sc_chat_msg_notify_group_id(<<0:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, _, F@_3, F@_4, F@_5,
-				    TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_msg_notify(RestF, 0, 0, F@_1,
-					  NewFValue, F@_3, F@_4, F@_5,
-					  TrUserData).
-
-d_field_sc_chat_msg_notify_msg_id(<<1:1, X:7,
-				    Rest/binary>>,
-				  N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				  TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_msg_notify_msg_id(Rest, N + 7,
-				      X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
-				      F@_5, TrUserData);
-d_field_sc_chat_msg_notify_msg_id(<<0:1, X:7,
-				    Rest/binary>>,
-				  N, Acc, F@_1, F@_2, _, F@_4, F@_5,
-				  TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_msg_notify(RestF, 0, 0, F@_1,
-					  F@_2, NewFValue, F@_4, F@_5,
-					  TrUserData).
-
-d_field_sc_chat_msg_notify_time(<<1:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_msg_notify_time(Rest, N + 7,
-				    X bsl N + Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				    TrUserData);
-d_field_sc_chat_msg_notify_time(<<0:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, F@_3, _, F@_5,
-				TrUserData) ->
-    {NewFValue, RestF} = {begin
-			    <<Res:32/signed-native>> = <<(X bsl N +
-							    Acc):32/unsigned-native>>,
-			    id(Res, TrUserData)
-			  end,
-			  Rest},
-    dfp_read_field_def_sc_chat_msg_notify(RestF, 0, 0, F@_1,
-					  F@_2, F@_3, NewFValue, F@_5,
-					  TrUserData).
-
-d_field_sc_chat_msg_notify_msg(<<1:1, X:7,
-				 Rest/binary>>,
-			       N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5, TrUserData)
-    when N < 57 ->
-    d_field_sc_chat_msg_notify_msg(Rest, N + 7,
-				   X bsl N + Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-				   TrUserData);
-d_field_sc_chat_msg_notify_msg(<<0:1, X:7,
-				 Rest/binary>>,
-			       N, Acc, F@_1, F@_2, F@_3, F@_4, Prev,
-			       TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bs:Len/binary, Rest2/binary>> = Rest,
-			   {id(decode_msg_p_msg(Bs, TrUserData), TrUserData),
-			    Rest2}
-			 end,
-    dfp_read_field_def_sc_chat_msg_notify(RestF, 0, 0, F@_1,
-					  F@_2, F@_3, F@_4,
-					  if Prev == undefined -> NewFValue;
-					     true ->
-						 merge_msg_p_msg(Prev,
-								 NewFValue,
-								 TrUserData)
-					  end,
-					  TrUserData).
-
-skip_varint_sc_chat_msg_notify(<<1:1, _:7,
-				 Rest/binary>>,
-			       Z1, Z2, F@_1, F@_2, F@_3, F@_4, F@_5,
-			       TrUserData) ->
-    skip_varint_sc_chat_msg_notify(Rest, Z1, Z2, F@_1, F@_2,
-				   F@_3, F@_4, F@_5, TrUserData);
-skip_varint_sc_chat_msg_notify(<<0:1, _:7,
-				 Rest/binary>>,
-			       Z1, Z2, F@_1, F@_2, F@_3, F@_4, F@_5,
-			       TrUserData) ->
-    dfp_read_field_def_sc_chat_msg_notify(Rest, Z1, Z2,
-					  F@_1, F@_2, F@_3, F@_4, F@_5,
-					  TrUserData).
-
-skip_length_delimited_sc_chat_msg_notify(<<1:1, X:7,
-					   Rest/binary>>,
-					 N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-					 TrUserData)
-    when N < 57 ->
-    skip_length_delimited_sc_chat_msg_notify(Rest, N + 7,
-					     X bsl N + Acc, F@_1, F@_2, F@_3,
-					     F@_4, F@_5, TrUserData);
-skip_length_delimited_sc_chat_msg_notify(<<0:1, X:7,
-					   Rest/binary>>,
-					 N, Acc, F@_1, F@_2, F@_3, F@_4, F@_5,
-					 TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_sc_chat_msg_notify(Rest2, 0, 0, F@_1,
-					  F@_2, F@_3, F@_4, F@_5, TrUserData).
-
-skip_group_sc_chat_msg_notify(Bin, FNum, Z2, F@_1, F@_2,
-			      F@_3, F@_4, F@_5, TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_sc_chat_msg_notify(Rest, 0, Z2, F@_1,
-					  F@_2, F@_3, F@_4, F@_5, TrUserData).
-
-skip_32_sc_chat_msg_notify(<<_:32, Rest/binary>>, Z1,
-			   Z2, F@_1, F@_2, F@_3, F@_4, F@_5, TrUserData) ->
-    dfp_read_field_def_sc_chat_msg_notify(Rest, Z1, Z2,
-					  F@_1, F@_2, F@_3, F@_4, F@_5,
-					  TrUserData).
-
-skip_64_sc_chat_msg_notify(<<_:64, Rest/binary>>, Z1,
-			   Z2, F@_1, F@_2, F@_3, F@_4, F@_5, TrUserData) ->
-    dfp_read_field_def_sc_chat_msg_notify(Rest, Z1, Z2,
-					  F@_1, F@_2, F@_3, F@_4, F@_5,
-					  TrUserData).
-
 read_group(Bin, FieldNum) ->
     {NumBytes, EndTagLen} = read_gr_b(Bin, 0, 0, 0, 0, FieldNum),
     <<Group:NumBytes/binary, _:EndTagLen/binary, Rest/binary>> = Bin,
@@ -1813,109 +1158,94 @@ merge_msgs(Prev, New, Opts)
 merge_msgs(Prev, New, MsgName, Opts) ->
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
-      cs_frends_all_friends ->
-	  merge_msg_cs_frends_all_friends(Prev, New, TrUserData);
-      sc_frends_all_friends ->
-	  merge_msg_sc_frends_all_friends(Prev, New, TrUserData);
-      p_frend -> merge_msg_p_frend(Prev, New, TrUserData);
-      p_msg -> merge_msg_p_msg(Prev, New, TrUserData);
-      cs_chat_single ->
-	  merge_msg_cs_chat_single(Prev, New, TrUserData);
-      sc_chat_single ->
-	  merge_msg_sc_chat_single(Prev, New, TrUserData);
-      cs_chat_group ->
-	  merge_msg_cs_chat_group(Prev, New, TrUserData);
-      sc_chat_group ->
-	  merge_msg_sc_chat_group(Prev, New, TrUserData);
-      sc_chat_msg_notify ->
-	  merge_msg_sc_chat_msg_notify(Prev, New, TrUserData)
+      up -> merge_msg_up(Prev, New, TrUserData);
+      down -> merge_msg_down(Prev, New, TrUserData);
+      cs_friend -> merge_msg_cs_friend(Prev, New, TrUserData);
+      sc_friend -> merge_msg_sc_friend(Prev, New, TrUserData);
+      cs_fetch_all_friends ->
+	  merge_msg_cs_fetch_all_friends(Prev, New, TrUserData);
+      sc_fetch_all_friends ->
+	  merge_msg_sc_fetch_all_friends(Prev, New, TrUserData);
+      p_frend -> merge_msg_p_frend(Prev, New, TrUserData)
     end.
 
--compile({nowarn_unused_function,merge_msg_cs_frends_all_friends/3}).
-merge_msg_cs_frends_all_friends(_Prev, New,
-				_TrUserData) ->
+-compile({nowarn_unused_function,merge_msg_up/3}).
+merge_msg_up(#up{friend_fun = PFfriend_fun},
+	     #up{friend_fun = NFfriend_fun}, TrUserData) ->
+    #up{friend_fun =
+	    if PFfriend_fun /= undefined,
+	       NFfriend_fun /= undefined ->
+		   merge_msg_cs_friend(PFfriend_fun, NFfriend_fun,
+				       TrUserData);
+	       PFfriend_fun == undefined -> NFfriend_fun;
+	       NFfriend_fun == undefined -> PFfriend_fun
+	    end}.
+
+-compile({nowarn_unused_function,merge_msg_down/3}).
+merge_msg_down(#down{friend_fun = PFfriend_fun},
+	       #down{friend_fun = NFfriend_fun}, TrUserData) ->
+    #down{friend_fun =
+	      if PFfriend_fun /= undefined,
+		 NFfriend_fun /= undefined ->
+		     merge_msg_sc_friend(PFfriend_fun, NFfriend_fun,
+					 TrUserData);
+		 PFfriend_fun == undefined -> NFfriend_fun;
+		 NFfriend_fun == undefined -> PFfriend_fun
+	      end}.
+
+-compile({nowarn_unused_function,merge_msg_cs_friend/3}).
+merge_msg_cs_friend(#cs_friend{fetch_all_friends =
+				   PFfetch_all_friends},
+		    #cs_friend{fetch_all_friends = NFfetch_all_friends},
+		    TrUserData) ->
+    #cs_friend{fetch_all_friends =
+		   if PFfetch_all_friends /= undefined,
+		      NFfetch_all_friends /= undefined ->
+			  merge_msg_cs_fetch_all_friends(PFfetch_all_friends,
+							 NFfetch_all_friends,
+							 TrUserData);
+		      PFfetch_all_friends == undefined -> NFfetch_all_friends;
+		      NFfetch_all_friends == undefined -> PFfetch_all_friends
+		   end}.
+
+-compile({nowarn_unused_function,merge_msg_sc_friend/3}).
+merge_msg_sc_friend(#sc_friend{fetch_all_friends =
+				   PFfetch_all_friends},
+		    #sc_friend{fetch_all_friends = NFfetch_all_friends},
+		    TrUserData) ->
+    #sc_friend{fetch_all_friends =
+		   if PFfetch_all_friends /= undefined,
+		      NFfetch_all_friends /= undefined ->
+			  merge_msg_sc_fetch_all_friends(PFfetch_all_friends,
+							 NFfetch_all_friends,
+							 TrUserData);
+		      PFfetch_all_friends == undefined -> NFfetch_all_friends;
+		      NFfetch_all_friends == undefined -> PFfetch_all_friends
+		   end}.
+
+-compile({nowarn_unused_function,merge_msg_cs_fetch_all_friends/3}).
+merge_msg_cs_fetch_all_friends(_Prev, New,
+			       _TrUserData) ->
     New.
 
--compile({nowarn_unused_function,merge_msg_sc_frends_all_friends/3}).
-merge_msg_sc_frends_all_friends(#sc_frends_all_friends{all_frends
-							   = PFall_frends},
-				#sc_frends_all_friends{all_frends =
-							   NFall_frends},
-				TrUserData) ->
-    #sc_frends_all_friends{all_frends =
-			       if PFall_frends /= undefined,
-				  NFall_frends /= undefined ->
-				      'erlang_++'(PFall_frends, NFall_frends,
-						  TrUserData);
-				  PFall_frends == undefined -> NFall_frends;
-				  NFall_frends == undefined -> PFall_frends
-			       end}.
+-compile({nowarn_unused_function,merge_msg_sc_fetch_all_friends/3}).
+merge_msg_sc_fetch_all_friends(#sc_fetch_all_friends{frends
+							 = PFfrends},
+			       #sc_fetch_all_friends{frends = NFfrends},
+			       TrUserData) ->
+    #sc_fetch_all_friends{frends =
+			      if PFfrends /= undefined, NFfrends /= undefined ->
+				     'erlang_++'(PFfrends, NFfrends,
+						 TrUserData);
+				 PFfrends == undefined -> NFfrends;
+				 NFfrends == undefined -> PFfrends
+			      end}.
 
 -compile({nowarn_unused_function,merge_msg_p_frend/3}).
 merge_msg_p_frend(#p_frend{},
 		  #p_frend{user_id = NFuser_id, nickname = NFnickname},
 		  _) ->
     #p_frend{user_id = NFuser_id, nickname = NFnickname}.
-
--compile({nowarn_unused_function,merge_msg_p_msg/3}).
-merge_msg_p_msg(#p_msg{text_msg = PFtext_msg,
-		       pic = PFpic},
-		#p_msg{msg_type = NFmsg_type, text_msg = NFtext_msg,
-		       pic = NFpic},
-		_) ->
-    #p_msg{msg_type = NFmsg_type,
-	   text_msg =
-	       if NFtext_msg =:= undefined -> PFtext_msg;
-		  true -> NFtext_msg
-	       end,
-	   pic =
-	       if NFpic =:= undefined -> PFpic;
-		  true -> NFpic
-	       end}.
-
--compile({nowarn_unused_function,merge_msg_cs_chat_single/3}).
-merge_msg_cs_chat_single(#cs_chat_single{msg = PFmsg},
-			 #cs_chat_single{receiver_id = NFreceiver_id,
-					 msg = NFmsg},
-			 TrUserData) ->
-    #cs_chat_single{receiver_id = NFreceiver_id,
-		    msg = merge_msg_p_msg(PFmsg, NFmsg, TrUserData)}.
-
--compile({nowarn_unused_function,merge_msg_sc_chat_single/3}).
-merge_msg_sc_chat_single(#sc_chat_single{},
-			 #sc_chat_single{result = NFresult, msg_id = NFmsg_id},
-			 _) ->
-    #sc_chat_single{result = NFresult, msg_id = NFmsg_id}.
-
--compile({nowarn_unused_function,merge_msg_cs_chat_group/3}).
-merge_msg_cs_chat_group(#cs_chat_group{msg = PFmsg},
-			#cs_chat_group{group_id = NFgroup_id, msg = NFmsg},
-			TrUserData) ->
-    #cs_chat_group{group_id = NFgroup_id,
-		   msg = merge_msg_p_msg(PFmsg, NFmsg, TrUserData)}.
-
--compile({nowarn_unused_function,merge_msg_sc_chat_group/3}).
-merge_msg_sc_chat_group(#sc_chat_group{},
-			#sc_chat_group{result = NFresult, msg_id = NFmsg_id},
-			_) ->
-    #sc_chat_group{result = NFresult, msg_id = NFmsg_id}.
-
--compile({nowarn_unused_function,merge_msg_sc_chat_msg_notify/3}).
-merge_msg_sc_chat_msg_notify(#sc_chat_msg_notify{group_id
-						     = PFgroup_id,
-						 msg = PFmsg},
-			     #sc_chat_msg_notify{sender_id = NFsender_id,
-						 group_id = NFgroup_id,
-						 msg_id = NFmsg_id,
-						 time = NFtime, msg = NFmsg},
-			     TrUserData) ->
-    #sc_chat_msg_notify{sender_id = NFsender_id,
-			group_id =
-			    if NFgroup_id =:= undefined -> PFgroup_id;
-			       true -> NFgroup_id
-			    end,
-			msg_id = NFmsg_id, time = NFtime,
-			msg = merge_msg_p_msg(PFmsg, NFmsg, TrUserData)}.
 
 
 verify_msg(Msg) when tuple_size(Msg) >= 1 ->
@@ -1933,52 +1263,94 @@ verify_msg(X, _Opts) ->
 verify_msg(Msg, MsgName, Opts) ->
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
-      cs_frends_all_friends ->
-	  v_msg_cs_frends_all_friends(Msg, [MsgName], TrUserData);
-      sc_frends_all_friends ->
-	  v_msg_sc_frends_all_friends(Msg, [MsgName], TrUserData);
+      up -> v_msg_up(Msg, [MsgName], TrUserData);
+      down -> v_msg_down(Msg, [MsgName], TrUserData);
+      cs_friend ->
+	  v_msg_cs_friend(Msg, [MsgName], TrUserData);
+      sc_friend ->
+	  v_msg_sc_friend(Msg, [MsgName], TrUserData);
+      cs_fetch_all_friends ->
+	  v_msg_cs_fetch_all_friends(Msg, [MsgName], TrUserData);
+      sc_fetch_all_friends ->
+	  v_msg_sc_fetch_all_friends(Msg, [MsgName], TrUserData);
       p_frend -> v_msg_p_frend(Msg, [MsgName], TrUserData);
-      p_msg -> v_msg_p_msg(Msg, [MsgName], TrUserData);
-      cs_chat_single ->
-	  v_msg_cs_chat_single(Msg, [MsgName], TrUserData);
-      sc_chat_single ->
-	  v_msg_sc_chat_single(Msg, [MsgName], TrUserData);
-      cs_chat_group ->
-	  v_msg_cs_chat_group(Msg, [MsgName], TrUserData);
-      sc_chat_group ->
-	  v_msg_sc_chat_group(Msg, [MsgName], TrUserData);
-      sc_chat_msg_notify ->
-	  v_msg_sc_chat_msg_notify(Msg, [MsgName], TrUserData);
       _ -> mk_type_error(not_a_known_message, Msg, [])
     end.
 
 
--compile({nowarn_unused_function,v_msg_cs_frends_all_friends/3}).
--dialyzer({nowarn_function,v_msg_cs_frends_all_friends/3}).
-v_msg_cs_frends_all_friends(#cs_frends_all_friends{},
-			    _Path, _) ->
+-compile({nowarn_unused_function,v_msg_up/3}).
+-dialyzer({nowarn_function,v_msg_up/3}).
+v_msg_up(#up{friend_fun = F1}, Path, TrUserData) ->
+    if F1 == undefined -> ok;
+       true ->
+	   v_msg_cs_friend(F1, [friend_fun | Path], TrUserData)
+    end,
     ok;
-v_msg_cs_frends_all_friends(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, cs_frends_all_friends}, X,
+v_msg_up(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, up}, X, Path).
+
+-compile({nowarn_unused_function,v_msg_down/3}).
+-dialyzer({nowarn_function,v_msg_down/3}).
+v_msg_down(#down{friend_fun = F1}, Path, TrUserData) ->
+    if F1 == undefined -> ok;
+       true ->
+	   v_msg_sc_friend(F1, [friend_fun | Path], TrUserData)
+    end,
+    ok;
+v_msg_down(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, down}, X, Path).
+
+-compile({nowarn_unused_function,v_msg_cs_friend/3}).
+-dialyzer({nowarn_function,v_msg_cs_friend/3}).
+v_msg_cs_friend(#cs_friend{fetch_all_friends = F1},
+		Path, TrUserData) ->
+    if F1 == undefined -> ok;
+       true ->
+	   v_msg_cs_fetch_all_friends(F1,
+				      [fetch_all_friends | Path], TrUserData)
+    end,
+    ok;
+v_msg_cs_friend(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, cs_friend}, X, Path).
+
+-compile({nowarn_unused_function,v_msg_sc_friend/3}).
+-dialyzer({nowarn_function,v_msg_sc_friend/3}).
+v_msg_sc_friend(#sc_friend{fetch_all_friends = F1},
+		Path, TrUserData) ->
+    if F1 == undefined -> ok;
+       true ->
+	   v_msg_sc_fetch_all_friends(F1,
+				      [fetch_all_friends | Path], TrUserData)
+    end,
+    ok;
+v_msg_sc_friend(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, sc_friend}, X, Path).
+
+-compile({nowarn_unused_function,v_msg_cs_fetch_all_friends/3}).
+-dialyzer({nowarn_function,v_msg_cs_fetch_all_friends/3}).
+v_msg_cs_fetch_all_friends(#cs_fetch_all_friends{},
+			   _Path, _) ->
+    ok;
+v_msg_cs_fetch_all_friends(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, cs_fetch_all_friends}, X,
 		  Path).
 
--compile({nowarn_unused_function,v_msg_sc_frends_all_friends/3}).
--dialyzer({nowarn_function,v_msg_sc_frends_all_friends/3}).
-v_msg_sc_frends_all_friends(#sc_frends_all_friends{all_frends
-						       = F1},
-			    Path, TrUserData) ->
+-compile({nowarn_unused_function,v_msg_sc_fetch_all_friends/3}).
+-dialyzer({nowarn_function,v_msg_sc_fetch_all_friends/3}).
+v_msg_sc_fetch_all_friends(#sc_fetch_all_friends{frends
+						     = F1},
+			   Path, TrUserData) ->
     if is_list(F1) ->
-	   _ = [v_msg_p_frend(Elem, [all_frends | Path],
-			      TrUserData)
+	   _ = [v_msg_p_frend(Elem, [frends | Path], TrUserData)
 		|| Elem <- F1],
 	   ok;
        true ->
 	   mk_type_error({invalid_list_of, {msg, p_frend}}, F1,
-			 [all_frends | Path])
+			 [frends | Path])
     end,
     ok;
-v_msg_sc_frends_all_friends(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, sc_frends_all_friends}, X,
+v_msg_sc_fetch_all_friends(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, sc_fetch_all_friends}, X,
 		  Path).
 
 -compile({nowarn_unused_function,v_msg_p_frend/3}).
@@ -1990,85 +1362,6 @@ v_msg_p_frend(#p_frend{user_id = F1, nickname = F2},
     ok;
 v_msg_p_frend(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, p_frend}, X, Path).
-
--compile({nowarn_unused_function,v_msg_p_msg/3}).
--dialyzer({nowarn_function,v_msg_p_msg/3}).
-v_msg_p_msg(#p_msg{msg_type = F1, text_msg = F2,
-		   pic = F3},
-	    Path, TrUserData) ->
-    v_type_int32(F1, [msg_type | Path], TrUserData),
-    if F2 == undefined -> ok;
-       true -> v_type_string(F2, [text_msg | Path], TrUserData)
-    end,
-    if F3 == undefined -> ok;
-       true -> v_type_bytes(F3, [pic | Path], TrUserData)
-    end,
-    ok;
-v_msg_p_msg(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, p_msg}, X, Path).
-
--compile({nowarn_unused_function,v_msg_cs_chat_single/3}).
--dialyzer({nowarn_function,v_msg_cs_chat_single/3}).
-v_msg_cs_chat_single(#cs_chat_single{receiver_id = F1,
-				     msg = F2},
-		     Path, TrUserData) ->
-    v_type_int32(F1, [receiver_id | Path], TrUserData),
-    v_msg_p_msg(F2, [msg | Path], TrUserData),
-    ok;
-v_msg_cs_chat_single(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, cs_chat_single}, X, Path).
-
--compile({nowarn_unused_function,v_msg_sc_chat_single/3}).
--dialyzer({nowarn_function,v_msg_sc_chat_single/3}).
-v_msg_sc_chat_single(#sc_chat_single{result = F1,
-				     msg_id = F2},
-		     Path, TrUserData) ->
-    v_type_int32(F1, [result | Path], TrUserData),
-    v_type_int32(F2, [msg_id | Path], TrUserData),
-    ok;
-v_msg_sc_chat_single(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, sc_chat_single}, X, Path).
-
--compile({nowarn_unused_function,v_msg_cs_chat_group/3}).
--dialyzer({nowarn_function,v_msg_cs_chat_group/3}).
-v_msg_cs_chat_group(#cs_chat_group{group_id = F1,
-				   msg = F2},
-		    Path, TrUserData) ->
-    v_type_int32(F1, [group_id | Path], TrUserData),
-    v_msg_p_msg(F2, [msg | Path], TrUserData),
-    ok;
-v_msg_cs_chat_group(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, cs_chat_group}, X, Path).
-
--compile({nowarn_unused_function,v_msg_sc_chat_group/3}).
--dialyzer({nowarn_function,v_msg_sc_chat_group/3}).
-v_msg_sc_chat_group(#sc_chat_group{result = F1,
-				   msg_id = F2},
-		    Path, TrUserData) ->
-    v_type_int32(F1, [result | Path], TrUserData),
-    v_type_int32(F2, [msg_id | Path], TrUserData),
-    ok;
-v_msg_sc_chat_group(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, sc_chat_group}, X, Path).
-
--compile({nowarn_unused_function,v_msg_sc_chat_msg_notify/3}).
--dialyzer({nowarn_function,v_msg_sc_chat_msg_notify/3}).
-v_msg_sc_chat_msg_notify(#sc_chat_msg_notify{sender_id =
-						 F1,
-					     group_id = F2, msg_id = F3,
-					     time = F4, msg = F5},
-			 Path, TrUserData) ->
-    v_type_int32(F1, [sender_id | Path], TrUserData),
-    if F2 == undefined -> ok;
-       true -> v_type_int32(F2, [group_id | Path], TrUserData)
-    end,
-    v_type_int32(F3, [msg_id | Path], TrUserData),
-    v_type_int32(F4, [time | Path], TrUserData),
-    v_msg_p_msg(F5, [msg | Path], TrUserData),
-    ok;
-v_msg_sc_chat_msg_notify(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, sc_chat_msg_notify}, X,
-		  Path).
 
 -compile({nowarn_unused_function,v_type_int32/3}).
 -dialyzer({nowarn_function,v_type_int32/3}).
@@ -2096,15 +1389,6 @@ v_type_string(S, Path, _TrUserData)
     end;
 v_type_string(X, Path, _TrUserData) ->
     mk_type_error(bad_unicode_string, X, Path).
-
--compile({nowarn_unused_function,v_type_bytes/3}).
--dialyzer({nowarn_function,v_type_bytes/3}).
-v_type_bytes(B, _Path, _TrUserData) when is_binary(B) ->
-    ok;
-v_type_bytes(B, _Path, _TrUserData) when is_list(B) ->
-    ok;
-v_type_bytes(X, Path, _TrUserData) ->
-    mk_type_error(bad_binary_value, X, Path).
 
 -compile({nowarn_unused_function,mk_type_error/3}).
 -spec mk_type_error(_, _, list()) -> no_return().
@@ -2147,72 +1431,45 @@ cons(Elem, Acc, _TrUserData) -> [Elem | Acc].
 'erlang_++'(A, B, _TrUserData) -> A ++ B.
 
 get_msg_defs() ->
-    [{{msg, cs_frends_all_friends}, []},
-     {{msg, sc_frends_all_friends},
-      [#field{name = all_frends, fnum = 1, rnum = 2,
+    [{{msg, up},
+      [#field{name = friend_fun, fnum = 1, rnum = 2,
+	      type = {msg, cs_friend}, occurrence = optional,
+	      opts = []}]},
+     {{msg, down},
+      [#field{name = friend_fun, fnum = 1, rnum = 2,
+	      type = {msg, sc_friend}, occurrence = optional,
+	      opts = []}]},
+     {{msg, cs_friend},
+      [#field{name = fetch_all_friends, fnum = 1, rnum = 2,
+	      type = {msg, cs_fetch_all_friends},
+	      occurrence = optional, opts = []}]},
+     {{msg, sc_friend},
+      [#field{name = fetch_all_friends, fnum = 1, rnum = 2,
+	      type = {msg, sc_fetch_all_friends},
+	      occurrence = optional, opts = []}]},
+     {{msg, cs_fetch_all_friends}, []},
+     {{msg, sc_fetch_all_friends},
+      [#field{name = frends, fnum = 1, rnum = 2,
 	      type = {msg, p_frend}, occurrence = repeated,
 	      opts = []}]},
      {{msg, p_frend},
       [#field{name = user_id, fnum = 1, rnum = 2,
 	      type = int32, occurrence = required, opts = []},
        #field{name = nickname, fnum = 2, rnum = 3,
-	      type = string, occurrence = required, opts = []}]},
-     {{msg, p_msg},
-      [#field{name = msg_type, fnum = 1, rnum = 2,
-	      type = int32, occurrence = required, opts = []},
-       #field{name = text_msg, fnum = 2, rnum = 3,
-	      type = string, occurrence = optional, opts = []},
-       #field{name = pic, fnum = 3, rnum = 4, type = bytes,
-	      occurrence = optional, opts = []}]},
-     {{msg, cs_chat_single},
-      [#field{name = receiver_id, fnum = 1, rnum = 2,
-	      type = int32, occurrence = required, opts = []},
-       #field{name = msg, fnum = 2, rnum = 3,
-	      type = {msg, p_msg}, occurrence = required,
-	      opts = []}]},
-     {{msg, sc_chat_single},
-      [#field{name = result, fnum = 1, rnum = 2, type = int32,
-	      occurrence = required, opts = []},
-       #field{name = msg_id, fnum = 2, rnum = 3, type = int32,
-	      occurrence = required, opts = []}]},
-     {{msg, cs_chat_group},
-      [#field{name = group_id, fnum = 1, rnum = 2,
-	      type = int32, occurrence = required, opts = []},
-       #field{name = msg, fnum = 2, rnum = 3,
-	      type = {msg, p_msg}, occurrence = required,
-	      opts = []}]},
-     {{msg, sc_chat_group},
-      [#field{name = result, fnum = 1, rnum = 2, type = int32,
-	      occurrence = required, opts = []},
-       #field{name = msg_id, fnum = 2, rnum = 3, type = int32,
-	      occurrence = required, opts = []}]},
-     {{msg, sc_chat_msg_notify},
-      [#field{name = sender_id, fnum = 1, rnum = 2,
-	      type = int32, occurrence = required, opts = []},
-       #field{name = group_id, fnum = 2, rnum = 3,
-	      type = int32, occurrence = optional, opts = []},
-       #field{name = msg_id, fnum = 3, rnum = 4, type = int32,
-	      occurrence = required, opts = []},
-       #field{name = time, fnum = 4, rnum = 5, type = int32,
-	      occurrence = required, opts = []},
-       #field{name = msg, fnum = 5, rnum = 6,
-	      type = {msg, p_msg}, occurrence = required,
-	      opts = []}]}].
+	      type = string, occurrence = required, opts = []}]}].
 
 
 get_msg_names() ->
-    [cs_frends_all_friends, sc_frends_all_friends, p_frend,
-     p_msg, cs_chat_single, sc_chat_single, cs_chat_group,
-     sc_chat_group, sc_chat_msg_notify].
+    [up, down, cs_friend, sc_friend, cs_fetch_all_friends,
+     sc_fetch_all_friends, p_frend].
 
 
 get_group_names() -> [].
 
 
 get_msg_or_group_names() ->
-    [cs_frends_all_friends, sc_frends_all_friends, p_frend,
-     p_msg, cs_chat_single, sc_chat_single, cs_chat_group,
-     sc_chat_group, sc_chat_msg_notify].
+    [up, down, cs_friend, sc_friend, cs_fetch_all_friends,
+     sc_fetch_all_friends, p_frend].
 
 
 get_enum_names() -> [].
@@ -2230,9 +1487,25 @@ fetch_enum_def(EnumName) ->
     erlang:error({no_such_enum, EnumName}).
 
 
-find_msg_def(cs_frends_all_friends) -> [];
-find_msg_def(sc_frends_all_friends) ->
-    [#field{name = all_frends, fnum = 1, rnum = 2,
+find_msg_def(up) ->
+    [#field{name = friend_fun, fnum = 1, rnum = 2,
+	    type = {msg, cs_friend}, occurrence = optional,
+	    opts = []}];
+find_msg_def(down) ->
+    [#field{name = friend_fun, fnum = 1, rnum = 2,
+	    type = {msg, sc_friend}, occurrence = optional,
+	    opts = []}];
+find_msg_def(cs_friend) ->
+    [#field{name = fetch_all_friends, fnum = 1, rnum = 2,
+	    type = {msg, cs_fetch_all_friends},
+	    occurrence = optional, opts = []}];
+find_msg_def(sc_friend) ->
+    [#field{name = fetch_all_friends, fnum = 1, rnum = 2,
+	    type = {msg, sc_fetch_all_friends},
+	    occurrence = optional, opts = []}];
+find_msg_def(cs_fetch_all_friends) -> [];
+find_msg_def(sc_fetch_all_friends) ->
+    [#field{name = frends, fnum = 1, rnum = 2,
 	    type = {msg, p_frend}, occurrence = repeated,
 	    opts = []}];
 find_msg_def(p_frend) ->
@@ -2240,44 +1513,6 @@ find_msg_def(p_frend) ->
 	    type = int32, occurrence = required, opts = []},
      #field{name = nickname, fnum = 2, rnum = 3,
 	    type = string, occurrence = required, opts = []}];
-find_msg_def(p_msg) ->
-    [#field{name = msg_type, fnum = 1, rnum = 2,
-	    type = int32, occurrence = required, opts = []},
-     #field{name = text_msg, fnum = 2, rnum = 3,
-	    type = string, occurrence = optional, opts = []},
-     #field{name = pic, fnum = 3, rnum = 4, type = bytes,
-	    occurrence = optional, opts = []}];
-find_msg_def(cs_chat_single) ->
-    [#field{name = receiver_id, fnum = 1, rnum = 2,
-	    type = int32, occurrence = required, opts = []},
-     #field{name = msg, fnum = 2, rnum = 3,
-	    type = {msg, p_msg}, occurrence = required, opts = []}];
-find_msg_def(sc_chat_single) ->
-    [#field{name = result, fnum = 1, rnum = 2, type = int32,
-	    occurrence = required, opts = []},
-     #field{name = msg_id, fnum = 2, rnum = 3, type = int32,
-	    occurrence = required, opts = []}];
-find_msg_def(cs_chat_group) ->
-    [#field{name = group_id, fnum = 1, rnum = 2,
-	    type = int32, occurrence = required, opts = []},
-     #field{name = msg, fnum = 2, rnum = 3,
-	    type = {msg, p_msg}, occurrence = required, opts = []}];
-find_msg_def(sc_chat_group) ->
-    [#field{name = result, fnum = 1, rnum = 2, type = int32,
-	    occurrence = required, opts = []},
-     #field{name = msg_id, fnum = 2, rnum = 3, type = int32,
-	    occurrence = required, opts = []}];
-find_msg_def(sc_chat_msg_notify) ->
-    [#field{name = sender_id, fnum = 1, rnum = 2,
-	    type = int32, occurrence = required, opts = []},
-     #field{name = group_id, fnum = 2, rnum = 3,
-	    type = int32, occurrence = optional, opts = []},
-     #field{name = msg_id, fnum = 3, rnum = 4, type = int32,
-	    occurrence = required, opts = []},
-     #field{name = time, fnum = 4, rnum = 5, type = int32,
-	    occurrence = required, opts = []},
-     #field{name = msg, fnum = 5, rnum = 6,
-	    type = {msg, p_msg}, occurrence = required, opts = []}];
 find_msg_def(_) -> error.
 
 
@@ -2343,27 +1578,23 @@ service_and_rpc_name_to_fqbins(S, R) ->
     error({gpb_error, {badservice_or_rpc, {S, R}}}).
 
 
-fqbin_to_msg_name(<<"frends.cs_frends_all_friends">>) -> cs_frends_all_friends;
-fqbin_to_msg_name(<<"frends.sc_frends_all_friends">>) -> sc_frends_all_friends;
-fqbin_to_msg_name(<<"frends.p_frend">>) -> p_frend;
-fqbin_to_msg_name(<<"frends.p_msg">>) -> p_msg;
-fqbin_to_msg_name(<<"frends.cs_chat_single">>) -> cs_chat_single;
-fqbin_to_msg_name(<<"frends.sc_chat_single">>) -> sc_chat_single;
-fqbin_to_msg_name(<<"frends.cs_chat_group">>) -> cs_chat_group;
-fqbin_to_msg_name(<<"frends.sc_chat_group">>) -> sc_chat_group;
-fqbin_to_msg_name(<<"frends.sc_chat_msg_notify">>) -> sc_chat_msg_notify;
+fqbin_to_msg_name(<<"up">>) -> up;
+fqbin_to_msg_name(<<"down">>) -> down;
+fqbin_to_msg_name(<<"cs_friend">>) -> cs_friend;
+fqbin_to_msg_name(<<"sc_friend">>) -> sc_friend;
+fqbin_to_msg_name(<<"cs_fetch_all_friends">>) -> cs_fetch_all_friends;
+fqbin_to_msg_name(<<"sc_fetch_all_friends">>) -> sc_fetch_all_friends;
+fqbin_to_msg_name(<<"p_frend">>) -> p_frend;
 fqbin_to_msg_name(E) -> error({gpb_error, {badmsg, E}}).
 
 
-msg_name_to_fqbin(cs_frends_all_friends) -> <<"frends.cs_frends_all_friends">>;
-msg_name_to_fqbin(sc_frends_all_friends) -> <<"frends.sc_frends_all_friends">>;
-msg_name_to_fqbin(p_frend) -> <<"frends.p_frend">>;
-msg_name_to_fqbin(p_msg) -> <<"frends.p_msg">>;
-msg_name_to_fqbin(cs_chat_single) -> <<"frends.cs_chat_single">>;
-msg_name_to_fqbin(sc_chat_single) -> <<"frends.sc_chat_single">>;
-msg_name_to_fqbin(cs_chat_group) -> <<"frends.cs_chat_group">>;
-msg_name_to_fqbin(sc_chat_group) -> <<"frends.sc_chat_group">>;
-msg_name_to_fqbin(sc_chat_msg_notify) -> <<"frends.sc_chat_msg_notify">>;
+msg_name_to_fqbin(up) -> <<"up">>;
+msg_name_to_fqbin(down) -> <<"down">>;
+msg_name_to_fqbin(cs_friend) -> <<"cs_friend">>;
+msg_name_to_fqbin(sc_friend) -> <<"sc_friend">>;
+msg_name_to_fqbin(cs_fetch_all_friends) -> <<"cs_fetch_all_friends">>;
+msg_name_to_fqbin(sc_fetch_all_friends) -> <<"sc_fetch_all_friends">>;
+msg_name_to_fqbin(p_frend) -> <<"p_frend">>;
 msg_name_to_fqbin(E) -> error({gpb_error, {badmsg, E}}).
 
 
@@ -2377,7 +1608,7 @@ enum_name_to_fqbin(E) ->
     error({gpb_error, {badenum, E}}).
 
 
-get_package_name() -> frends.
+get_package_name() -> undefined.
 
 
 %% Whether or not the message names
@@ -2405,12 +1636,11 @@ get_all_source_basenames() ->
 get_all_proto_names() -> ["im", "friends", "chat"].
 
 
-get_msg_containment("im") -> [];
+get_msg_containment("im") -> [down, up];
 get_msg_containment("friends") ->
-    [cs_frends_all_friends, p_frend, sc_frends_all_friends];
-get_msg_containment("chat") ->
-    [cs_chat_group, cs_chat_single, p_msg, sc_chat_group,
-     sc_chat_msg_notify, sc_chat_single];
+    [cs_fetch_all_friends, cs_friend, p_frend,
+     sc_fetch_all_friends, sc_friend];
+get_msg_containment("chat") -> [];
 get_msg_containment(P) ->
     error({gpb_error, {badproto, P}}).
 
@@ -2443,15 +1673,13 @@ get_enum_containment(P) ->
     error({gpb_error, {badproto, P}}).
 
 
-get_proto_by_msg_name_as_fqbin(<<"frends.sc_chat_group">>) -> "chat";
-get_proto_by_msg_name_as_fqbin(<<"frends.cs_chat_group">>) -> "chat";
-get_proto_by_msg_name_as_fqbin(<<"frends.sc_frends_all_friends">>) -> "friends";
-get_proto_by_msg_name_as_fqbin(<<"frends.cs_frends_all_friends">>) -> "friends";
-get_proto_by_msg_name_as_fqbin(<<"frends.p_frend">>) -> "friends";
-get_proto_by_msg_name_as_fqbin(<<"frends.sc_chat_single">>) -> "chat";
-get_proto_by_msg_name_as_fqbin(<<"frends.cs_chat_single">>) -> "chat";
-get_proto_by_msg_name_as_fqbin(<<"frends.p_msg">>) -> "chat";
-get_proto_by_msg_name_as_fqbin(<<"frends.sc_chat_msg_notify">>) -> "chat";
+get_proto_by_msg_name_as_fqbin(<<"up">>) -> "im";
+get_proto_by_msg_name_as_fqbin(<<"sc_fetch_all_friends">>) -> "friends";
+get_proto_by_msg_name_as_fqbin(<<"cs_fetch_all_friends">>) -> "friends";
+get_proto_by_msg_name_as_fqbin(<<"sc_friend">>) -> "friends";
+get_proto_by_msg_name_as_fqbin(<<"p_frend">>) -> "friends";
+get_proto_by_msg_name_as_fqbin(<<"cs_friend">>) -> "friends";
+get_proto_by_msg_name_as_fqbin(<<"down">>) -> "im";
 get_proto_by_msg_name_as_fqbin(E) ->
     error({gpb_error, {badmsg, E}}).
 
